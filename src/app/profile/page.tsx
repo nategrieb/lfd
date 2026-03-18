@@ -1,4 +1,5 @@
 import { createServerSupabase } from '@/lib/supabase-server'
+import ProfileForm from './ProfileForm'
 import SignOutButton from './SignOutButton'
 
 export default async function ProfilePage() {
@@ -9,6 +10,12 @@ export default async function ProfilePage() {
 
   const user = session?.user
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('username, squat_1rm, bench_1rm, deadlift_1rm, preferred_unit')
+    .eq('id', user?.id)
+    .single()
+
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
       <div className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-20">
@@ -18,19 +25,26 @@ export default async function ProfilePage() {
         </header>
 
         <section className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-8 shadow">
-          <h2 className="text-xl font-semibold">Account</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
-              <p className="text-xs text-zinc-400">Email</p>
-              <p className="mt-1 break-words text-sm font-medium">{user?.email ?? '—'}</p>
-            </div>
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
-              <p className="text-xs text-zinc-400">User ID</p>
-              <p className="mt-1 break-words text-sm font-medium">{user?.id ?? '—'}</p>
-            </div>
+          <h2 className="text-xl font-semibold">Lift stats</h2>
+          <p className="mt-1 text-sm text-zinc-400">Update your 1RM and preferred units.</p>
+
+          <div className="mt-6">
+            <ProfileForm
+              squat={profile?.squat_1rm ?? 0}
+              bench={profile?.bench_1rm ?? 0}
+              deadlift={profile?.deadlift_1rm ?? 0}
+              preferredUnit={(profile?.preferred_unit as 'lb' | 'kg') ?? 'lb'}
+            />
           </div>
 
-          <div className="mt-8">
+          <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <a
+              href="/workout"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500/20 px-5 py-3 text-sm font-semibold text-blue-100 shadow-lg shadow-blue-500/10 transition hover:bg-blue-500/30"
+            >
+              <span className="text-lg">🏋️</span>
+              Start workout
+            </a>
             <SignOutButton />
           </div>
         </section>

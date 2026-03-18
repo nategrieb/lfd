@@ -14,14 +14,18 @@ async function buildCookieOptions() {
     },
     set: async (name: string, value: string, options?: Record<string, any>) => {
       if (typeof cookieStore.set === 'function') {
-        cookieStore.set(name, value, options as any)
+        // Some runtimes accept (name, value, options), others accept a single cookie object.
+        if (cookieStore.set.length >= 2) {
+          cookieStore.set(name, value, options as any)
+        } else {
+          cookieStore.set({ name, value, ...(options ?? {}) } as any)
+        }
       }
     },
-    remove: async (name: string, options?: Record<string, any>) => {
+    remove: async (name: string) => {
+      // Next.js ResponseCookies only supports `.delete()`
       if (typeof cookieStore.delete === 'function') {
-        cookieStore.delete(name, options as any)
-      } else if (typeof cookieStore.remove === 'function') {
-        cookieStore.remove(name, options as any)
+        cookieStore.delete(name)
       }
     },
   }

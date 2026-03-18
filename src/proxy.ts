@@ -12,13 +12,19 @@ function buildCookieOptions(request: NextRequest, response: NextResponse) {
       return cookie ? cookie.value : null
     },
     set: (name: string, value: string, options?: Record<string, any>) => {
-      responseCookies.set(name, value, options as any)
+      // ResponseCookies.set accepts either (name, value, options?) or a single object.
+      if (typeof responseCookies.set === 'function') {
+        if (responseCookies.set.length >= 2) {
+          responseCookies.set(name, value, options as any)
+        } else {
+          responseCookies.set({ name, value, ...(options ?? {}) } as any)
+        }
+      }
     },
-    remove: (name: string, options?: Record<string, any>) => {
+    remove: (name: string) => {
+      // Next.js ResponseCookies only supports `.delete()`
       if (typeof responseCookies.delete === 'function') {
-        responseCookies.delete(name, options as any)
-      } else if (typeof responseCookies.remove === 'function') {
-        responseCookies.remove(name, options as any)
+        responseCookies.delete(name)
       }
     },
   }
