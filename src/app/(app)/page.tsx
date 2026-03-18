@@ -21,7 +21,7 @@ export default async function DashboardPage() {
   // Check for in-progress workout
   const { data: activeWorkout } = await supabase
     .from('workouts')
-    .select('id')
+    .select('id, name')
     .eq('user_id', user.id)
     .eq('status', 'in_progress')
     .order('created_at', { ascending: false })
@@ -31,7 +31,7 @@ export default async function DashboardPage() {
   // Recent completed workouts
   const { data: recentWorkouts } = await supabase
     .from('workouts')
-    .select('id, created_at, sets(exercise_name)')
+    .select('id, name, created_at, sets(exercise_name)')
     .eq('user_id', user.id)
     .eq('status', 'completed')
     .order('created_at', { ascending: false })
@@ -117,7 +117,7 @@ export default async function DashboardPage() {
                   >
                     <div>
                       <p className="text-sm font-medium">
-                        {exercises.length ? exercises.join(', ') : 'Workout'}
+                        {w.name?.trim() || (exercises.length ? exercises.join(', ') : 'Workout')}
                       </p>
                       <p className="text-xs text-zinc-500">
                         {new Date(w.created_at).toLocaleDateString(undefined, {

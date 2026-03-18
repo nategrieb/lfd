@@ -1,5 +1,6 @@
 import { createServerSupabase } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 
 export default async function WorkoutSummaryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: workoutId } = await params
@@ -14,7 +15,7 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
 
   const { data: workout } = await supabase
     .from('workouts')
-    .select('id, created_at, status')
+    .select('id, name, created_at, status')
     .eq('id', workoutId)
     .eq('user_id', user.id)
     .single()
@@ -61,8 +62,33 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
 
   return (
     <div className="mx-auto max-w-lg px-5 py-8">
-      <h1 className="text-2xl font-semibold mb-1">Workout Summary</h1>
-      <p className="text-sm text-zinc-400 mb-6">{new Date(workout.created_at).toLocaleString()}</p>
+      <div className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold mb-1">{workout.name?.trim() || 'Workout Summary'}</h1>
+          <p className="text-sm text-zinc-400">{new Date(workout.created_at).toLocaleString()}</p>
+        </div>
+        <Link
+          href={`/workout/${workout.id}`}
+          aria-label="Edit workout"
+          title="Edit workout"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            className="h-5 w-5"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M16.862 3.487a2.1 2.1 0 112.97 2.97L9.26 17.03a3 3 0 01-1.265.75l-3.19.91.91-3.19a3 3 0 01.75-1.266L16.862 3.487z"
+            />
+          </svg>
+        </Link>
+      </div>
 
       {totalVolume > 0 && (
         <div className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 text-center">
@@ -93,18 +119,18 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
       ))}
 
       <div className="mt-8 flex gap-3">
-        <a
+        <Link
           href="/history"
           className="flex-1 rounded-xl border border-zinc-700 py-3 text-center text-sm font-semibold text-zinc-200 transition active:bg-zinc-800"
         >
           History
-        </a>
-        <a
+        </Link>
+        <Link
           href="/workout"
           className="flex-1 rounded-xl bg-blue-600 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-500"
         >
           New Workout
-        </a>
+        </Link>
       </div>
     </div>
   )

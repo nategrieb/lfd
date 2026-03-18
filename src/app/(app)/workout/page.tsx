@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase-server'
-import StartWorkoutButton from './StartWorkoutButton'
 
 export default async function WorkoutIndexPage() {
   const supabase = await createServerSupabase()
@@ -21,19 +20,31 @@ export default async function WorkoutIndexPage() {
     .eq('status', 'in_progress')
     .order('created_at', { ascending: false })
     .limit(1)
-    .single()
+    .maybeSingle()
 
   if (workout?.id) {
     redirect(`/workout/${workout.id}`)
   }
 
-  return (
-    <div className="mx-auto flex max-w-lg flex-col items-center justify-center gap-8 px-5 py-16">
-      <h1 className="text-3xl font-extrabold tracking-tight">Lift For Dan</h1>
-      <p className="text-center text-sm text-zinc-400">
-        Ready to log today&apos;s workout? Start a new session and track your sets.
-      </p>
-      <StartWorkoutButton />
-    </div>
-  )
+  const defaultName = `Workout ${new Date().toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  })}`
+
+  const { data: newWorkout, error } = await supabase
+    .from('workouts')
+    .insert({ user_id: userId, status: 'in_progress', name: defaultName })
+    .select('id')
+    .single()
+
+  if (error || !newWorkout?.id) {
+    return (
+      <div className="mx-auto max-w-lg px-5 py-8">
+        <h1 className="text-2xl font-semibold">Could not start workout</h1>
+        <p className="mt-2 text-sm text-red-300">{error?.message ?? 'Please try again.'}</p>
+      </div>
+    )
+  }
+
+  redirect(`/workout/${newWorkout.id}`)
 }

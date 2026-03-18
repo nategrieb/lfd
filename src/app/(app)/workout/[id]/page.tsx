@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase-server'
 import WorkoutSession from './WorkoutSession'
-import { finishWorkout } from '@/app/(app)/workout/actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,14 +13,14 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
   } = await supabase.auth.getUser()
 
   if (!user?.id) {
-    return null
+    redirect('/login')
   }
 
   const userId = user.id
 
   const { data: workout } = await supabase
     .from('workouts')
-    .select('id, status')
+    .select('id, status, name')
     .eq('id', workoutId)
     .eq('user_id', userId)
     .single()
@@ -59,10 +58,15 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
     <div className="mx-auto flex max-w-lg flex-col gap-6 px-5 py-8">
       <header>
         <h1 className="text-2xl font-extrabold tracking-tight">Workout</h1>
-        <p className="text-sm text-zinc-400">Log sets for your current session.</p>
+        <p className="text-sm text-zinc-400">Log sets and edit this workout live.</p>
       </header>
 
-      <WorkoutSession workoutId={workoutId} initialSets={setRows} />
+      <WorkoutSession
+        workoutId={workoutId}
+        initialWorkoutName={workout.name ?? 'Untitled Workout'}
+        workoutStatus={workout.status}
+        initialSets={setRows}
+      />
     </div>
   )
 }
