@@ -1,0 +1,6 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "npx tsc": true,
+        "npm run -s lint": true
+    }
+}

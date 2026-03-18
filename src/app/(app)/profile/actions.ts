@@ -13,7 +13,7 @@ export async function updateProfile(formData: FormData) {
   const squat = Number(formData.get('squat') ?? 0)
   const bench = Number(formData.get('bench') ?? 0)
   const deadlift = Number(formData.get('deadlift') ?? 0)
-  const preferredUnit = String(formData.get('preferred_unit') ?? 'lb')
+  const preferredUnit = String(formData.get('preferredUnit') ?? formData.get('preferred_unit') ?? 'lb')
 
   if (!['lb', 'kg'].includes(preferredUnit)) {
     return { success: false, message: 'Preferred unit must be lb or kg.' }
@@ -25,14 +25,14 @@ export async function updateProfile(formData: FormData) {
 
   const supabase = await createServerSupabase()
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session?.user?.id) {
+  if (!user?.id) {
     return { success: false, message: 'Not authenticated.' }
   }
 
-  const userId = session.user.id
+  const userId = user.id
 
   const { error } = await supabase
     .from('profiles')

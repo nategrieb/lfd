@@ -2,60 +2,42 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
-function buildCookieOptions(request: NextRequest, response: NextResponse) {
-  const requestCookies = request.cookies
-  const responseCookies = response.cookies
-
-  return {
-    get: (name: string) => {
-      const cookie = requestCookies.get(name)
-      return cookie ? cookie.value : null
-    },
-    set: (name: string, value: string, options?: Record<string, any>) => {
-      // ResponseCookies.set accepts either (name, value, options?) or a single object.
-      if (typeof responseCookies.set === 'function') {
-        if (responseCookies.set.length >= 2) {
-          responseCookies.set(name, value, options as any)
-        } else {
-          responseCookies.set({ name, value, ...(options ?? {}) } as any)
-        }
-      }
-    },
-    remove: (name: string) => {
-      // Next.js ResponseCookies only supports `.delete()`
-      if (typeof responseCookies.delete === 'function') {
-        responseCookies.delete(name)
-      }
-    },
-  }
-}
-
 export default async function proxy(request: NextRequest) {
-  const response = NextResponse.next()
+  let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    { cookies: buildCookieOptions(request, response) }
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
   )
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
   const isAuthPage = request.nextUrl.pathname.startsWith('/login')
 
-  if (!session && !isAuthPage) {
-    const loginUrl = new URL('/login', request.url)
-    return NextResponse.redirect(loginUrl)
+  // Only gate unauthenticated users
+  if (!user && !isAuthPage) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url, { status: 302 })
   }
 
-  if (session && isAuthPage) {
-    const profileUrl = new URL('/profile', request.url)
-    return NextResponse.redirect(profileUrl)
-  }
-
-  return response
+  return supabaseResponse
 }
 
 export const config = {

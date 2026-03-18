@@ -125,6 +125,7 @@ export async function finishWorkout(formData: FormData): Promise<void> {
     throw new Error('Not authenticated.')
   }
 
+  // Mark workout as completed
   const { error } = await supabase
     .from('workouts')
     .update({ status: 'completed' })
@@ -135,5 +136,50 @@ export async function finishWorkout(formData: FormData): Promise<void> {
     throw new Error(error.message)
   }
 
-  redirect('/history')
+  // Fetch all sets for this workout
+  const { data: sets } = await supabase
+    .from('sets')
+    .select('exercise_name, weight')
+    .eq('workout_id', workoutId)
+
+  // Only check for PRs for these exercises
+  const PR_EXERCISES = ['Squat', 'Bench', 'Deadlift']
+  const maxLifts: Record<string, number> = {}
+  for (const ex of PR_EXERCISES) {
+    const max = Math.max(
+      ...((sets ?? []).filter((s) => s.exercise_name === ex).map((s) => s.weight)),
+      0
+    )
+    if (max > 0) maxLifts[ex] = max
+  }
+
+  // Fetch current profile PRs
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('squat_1rm, bench_1rm, deadlift_1rm')
+    .eq('id', user.id)
+    .single()
+
+  // Prepare update if new PRs found
+  const updates: Record<string, number> = {}
+  if (profile) {
+    if (maxLifts['Squat'] && maxLifts['Squat'] > (profile.squat_1rm ?? 0)) {
+      updates['squat_1rm'] = maxLifts['Squat']
+    }
+    if (maxLifts['Bench'] && maxLifts['Bench'] > (profile.bench_1rm ?? 0)) {
+      updates['bench_1rm'] = maxLifts['Bench']
+    }
+    if (maxLifts['Deadlift'] && maxLifts['Deadlift'] > (profile.deadlift_1rm ?? 0)) {
+      updates['deadlift_1rm'] = maxLifts['Deadlift']
+    }
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', user.id)
+  }
+
+  redirect(`/workout/${workoutId}/summary`)
 }

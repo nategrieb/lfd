@@ -1,39 +1,28 @@
 import { createServerClient } from '@supabase/ssr'
-import { cookies, headers } from 'next/headers'
-import { parse } from 'cookie'
+import { cookies } from 'next/headers'
 
-async function buildCookieOptions() {
-  const headerStore = await headers()
+export const createServerSupabase = async () => {
   const cookieStore = await cookies()
 
-  return {
-    get: async (name: string) => {
-      const cookieHeader = headerStore.get('cookie') ?? ''
-      const parsed = parse(cookieHeader)
-      return parsed[name] ?? null
-    },
-    set: async (name: string, value: string, options?: Record<string, any>) => {
-      if (typeof cookieStore.set === 'function') {
-        // Some runtimes accept (name, value, options), others accept a single cookie object.
-        if (cookieStore.set.length >= 2) {
-          cookieStore.set(name, value, options as any)
-        } else {
-          cookieStore.set({ name, value, ...(options ?? {}) } as any)
-        }
-      }
-    },
-    remove: async (name: string) => {
-      // Next.js ResponseCookies only supports `.delete()`
-      if (typeof cookieStore.delete === 'function') {
-        cookieStore.delete(name)
-      }
-    },
-  }
-}
-
-export const createServerSupabase = async () =>
-  createServerClient(
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    { cookies: await buildCookieOptions() }
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // Called from a Server Component — safe to ignore.
+            // The proxy handles session refresh and sets cookies on the response.
+          }
+        },
+      },
+    }
   )
+}

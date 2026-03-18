@@ -1,14 +1,12 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { login, signup } from './actions'
 
 export default function LoginForm() {
   const [mode, setMode] = useState<'login' | 'signup'>('login')
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-  const router = useRouter()
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -21,7 +19,7 @@ export default function LoginForm() {
         const result = mode === 'login' ? await login(formData) : await signup(formData)
 
         if (result?.success) {
-          router.push('/profile')
+          window.location.href = '/'
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Something went wrong')

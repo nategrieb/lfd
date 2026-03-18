@@ -28,14 +28,12 @@ export default async function WorkoutIndexPage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white">
-      <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-8 px-6 py-20">
-        <h1 className="text-4xl font-extrabold tracking-tight">Lift For Dan</h1>
-        <p className="text-center text-sm text-zinc-400">
-          Ready to log today&apos;s workout? Start a new session and track your sets.
-        </p>
-        <StartWorkoutButton />
-      </div>
-    </main>
+    <div className="mx-auto flex max-w-lg flex-col items-center justify-center gap-8 px-5 py-16">
+      <h1 className="text-3xl font-extrabold tracking-tight">Lift For Dan</h1>
+      <p className="text-center text-sm text-zinc-400">
+        Ready to log today&apos;s workout? Start a new session and track your sets.
+      </p>
+      <StartWorkoutButton />
+    </div>
   )
 }
