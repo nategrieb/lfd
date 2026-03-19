@@ -1,5 +1,6 @@
 import { createServerSupabase } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import FollowButton from './FollowButton'
 
 type SearchParams = Promise<{ q?: string }>
@@ -98,28 +99,42 @@ export default async function PeoplePage({ searchParams }: { searchParams: Searc
             <p className="text-sm text-zinc-500">No users found for &ldquo;{q}&rdquo;.</p>
           ) : (
             <ul className="space-y-2">
-              {searchResults.map((profile) => (
-                <li
-                  key={profile.id}
-                  className="flex items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3"
-                >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-sm font-bold text-white">
-                    {((profile.display_name ?? profile.username)?.[0] ?? '?').toUpperCase()}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    {profile.display_name && (
-                      <p className="truncate text-sm font-semibold">{profile.display_name}</p>
+              {searchResults.map((profile) => {
+                const href = profile.username ? `/people/${profile.username}` : null
+                const inner = (
+                  <>
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-sm font-bold text-white">
+                      {((profile.display_name ?? profile.username)?.[0] ?? '?').toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      {profile.display_name && (
+                        <p className="truncate text-sm font-semibold">{profile.display_name}</p>
+                      )}
+                      <p className={`truncate text-xs ${profile.display_name ? 'text-zinc-500' : 'text-sm font-semibold text-white'}`}>
+                        {profile.username ? `@${profile.username}` : profile.id.slice(0, 8)}
+                      </p>
+                    </div>
+                  </>
+                )
+                return (
+                  <li
+                    key={profile.id}
+                    className="flex items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3"
+                  >
+                    {href ? (
+                      <Link href={href} className="flex min-w-0 flex-1 items-center gap-3 hover:opacity-80 transition-opacity">
+                        {inner}
+                      </Link>
+                    ) : (
+                      <div className="flex min-w-0 flex-1 items-center gap-3">{inner}</div>
                     )}
-                    <p className={`truncate text-xs ${profile.display_name ? 'text-zinc-500' : 'text-sm font-semibold text-white'}`}>
-                      {profile.username ? `@${profile.username}` : profile.id.slice(0, 8)}
-                    </p>
-                  </div>
-                  <FollowButton
-                    userId={profile.id}
-                    initialIsFollowing={followingIds.has(profile.id)}
-                  />
-                </li>
-              ))}
+                    <FollowButton
+                      userId={profile.id}
+                      initialIsFollowing={followingIds.has(profile.id)}
+                    />
+                  </li>
+                )
+              })}
             </ul>
           )}
         </section>
@@ -139,25 +154,39 @@ export default async function PeoplePage({ searchParams }: { searchParams: Searc
           </div>
         ) : (
           <ul className="space-y-2">
-            {followingProfiles.map((profile) => (
-              <li
-                key={profile.id}
-                className="flex items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3"
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-black">
-                  {((profile.display_name ?? profile.username)?.[0] ?? '?').toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  {profile.display_name && (
-                    <p className="truncate text-sm font-semibold">{profile.display_name}</p>
+            {followingProfiles.map((profile) => {
+              const href = profile.username ? `/people/${profile.username}` : null
+              const inner = (
+                <>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-black">
+                    {((profile.display_name ?? profile.username)?.[0] ?? '?').toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    {profile.display_name && (
+                      <p className="truncate text-sm font-semibold">{profile.display_name}</p>
+                    )}
+                    <p className={`truncate text-xs ${profile.display_name ? 'text-zinc-500' : 'text-sm font-semibold text-white'}`}>
+                      {profile.username ? `@${profile.username}` : profile.id.slice(0, 8)}
+                    </p>
+                  </div>
+                </>
+              )
+              return (
+                <li
+                  key={profile.id}
+                  className="flex items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3"
+                >
+                  {href ? (
+                    <Link href={href} className="flex min-w-0 flex-1 items-center gap-3 hover:opacity-80 transition-opacity">
+                      {inner}
+                    </Link>
+                  ) : (
+                    <div className="flex min-w-0 flex-1 items-center gap-3">{inner}</div>
                   )}
-                  <p className={`truncate text-xs ${profile.display_name ? 'text-zinc-500' : 'text-sm font-semibold text-white'}`}>
-                    {profile.username ? `@${profile.username}` : profile.id.slice(0, 8)}
-                  </p>
-                </div>
-                <FollowButton userId={profile.id} initialIsFollowing={true} />
-              </li>
-            ))}
+                  <FollowButton userId={profile.id} initialIsFollowing={true} />
+                </li>
+              )
+            })}
           </ul>
         )}
       </section>
