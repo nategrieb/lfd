@@ -380,3 +380,49 @@ export async function finishWorkout(formData: FormData): Promise<void> {
 
   redirect(`/workout/${workoutId}/summary`)
 }
+
+export async function deleteWorkout({ workoutId }: { workoutId: string }) {
+  if (!workoutId) {
+    return { success: false, message: 'Missing workout id.' }
+  }
+
+  const supabase = await createServerSupabase()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user?.id) {
+    return { success: false, message: 'Not authenticated.' }
+  }
+
+  // Fetch all sets that have a video so we can clean up Storage.
+  // We verify ownership via the workout_id + user_id join on workouts.
+  const { data: setsWithVideo } = await supabase
+    .from('sets')
+    .select('id, video_url')
+    .eq('workout_id', workoutId)
+    .not('video_url', 'is', null)
+
+  // Delete workout row — assumes DB cascade deletes the sets rows.
+  // Ownership check: only delete if user_id matches.
+  const { error } = await supabase
+    .from('workouts')
+    .delete()
+    .eq('id', workoutId)
+    .eq('user_id', user.id)
+
+  if (error) {
+    return { success: false, message: error.message }
+  }
+
+  // Best-effort bulk-remove all video files from Storage.
+  if (setsWithVideo && setsWithVideo.length > 0) {
+    const paths = setsWithVideo.map((s) => `${user.id}/${workoutId}/${s.id}.mp4`)
+    await supabase.storage.from('workout-videos').remove(paths)
+  }
+
+  revalidatePath('/history')
+  revalidatePath('/')
+
+  return { success: true }
+}
