@@ -111,6 +111,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
 
       <WorkoutSession
         workoutId={workoutId}
+        userId={userId}
         initialWorkoutName={workout.name ?? 'Untitled Workout'}
         workoutStatus={workout.status}
         initialSets={setRows}

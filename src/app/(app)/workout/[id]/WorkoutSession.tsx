@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { addSet, cancelWorkoutDraft, deleteSet, finishWorkout, updateSet, updateWorkoutName } from '../actions'
 import AddSetForm from './AddSetForm'
 import VideoUpload from './VideoUpload'
+import FinishWorkoutSheet from './FinishWorkoutSheet'
 import { nameToSlug } from '@/lib/lifts'
 import { formatTempo, formatRest } from '@/lib/programs'
 import RestTimer from './RestTimer'
@@ -36,6 +37,7 @@ type WorkoutSet = {
 
 type WorkoutSessionProps = {
   workoutId: string
+  userId: string
   initialWorkoutName: string
   workoutStatus: 'in_progress' | 'completed'
   initialSets: WorkoutSet[]
@@ -104,6 +106,7 @@ function getOneRepMax(exerciseName: string, maxes: Record<string, number>): numb
 
 export default function WorkoutSession({
   workoutId,
+  userId,
   initialWorkoutName,
   workoutStatus,
   initialSets,
@@ -172,6 +175,7 @@ export default function WorkoutSession({
   const [newExerciseName, setNewExerciseName] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  const [showFinishSheet, setShowFinishSheet] = useState(false)
 
   const groupedSets = useMemo(() => {
     return sets.reduce<Record<string, WorkoutSet[]>>((acc, set) => {
@@ -371,14 +375,7 @@ export default function WorkoutSession({
   }
 
   const handleFinishWorkout = () => {
-    startTransition(async () => {
-      const ok = await persistAllChanges()
-      if (!ok) return
-
-      const formData = new FormData()
-      formData.set('workout_id', workoutId)
-      await finishWorkout(formData)
-    })
+    setShowFinishSheet(true)
   }
 
   const handleCancelDraft = () => {
@@ -396,6 +393,14 @@ export default function WorkoutSession({
 
   return (
     <>
+      {showFinishSheet && (
+        <FinishWorkoutSheet
+          workoutId={workoutId}
+          userId={userId}
+          onClose={() => setShowFinishSheet(false)}
+          onBeforeFinish={persistAllChanges}
+        />
+      )}
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
         <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-400">Workout Name</label>
         <div className="mt-2 flex items-center gap-2">

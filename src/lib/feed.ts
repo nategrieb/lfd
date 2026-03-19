@@ -26,12 +26,17 @@ export type FeedSet = {
   video_url: string | null
 }
 
+export type MediaItem =
+  | { kind: 'video'; url: string; label: string }
+  | { kind: 'photo'; url: string }
+
 export type FeedWorkout = {
   id: string
   name: string | null
   created_at: string
   user_id: string
   sets: FeedSet[]
+  post_photos?: string[] | null
 }
 
 export type FeedItem = {
@@ -57,6 +62,10 @@ export type FeedItem = {
    * calling buildFeed().
    */
   extraBadges: string[]
+  /** Best set per distinct exercise, sorted by score — drives the multi-lift display. */
+  topSetsByExercise: Array<{ set: FeedSet; pctOneRepMax: number | null }>
+  /** All media to show in the carousel: one video per exercise + post photos. */
+  mediaItems: MediaItem[]
 }
 
 // ─── Scoring weights ────────────────────────────────────────────────────────
@@ -141,6 +150,9 @@ export function buildFeed(
     let videoSet: FeedSet | null = null
     let bestVideoFinal = -Infinity
 
+    // Best set per distinct exercise (for multi-lift display and per-exercise videos)
+    const bestByExercise = new Map<string, { set: FeedSet; pct: number | null; score: number }>()
+
     for (const set of workout.sets) {
       const { rawScore, pct } = scoreSet(set, liftsMap)
       const final = rawScore * decay
@@ -155,9 +167,33 @@ export function buildFeed(
         bestVideoFinal = final
         videoSet = set
       }
+
+      const key = set.exercise_name.toLowerCase()
+      const existing = bestByExercise.get(key)
+      if (!existing || final > existing.score) {
+        bestByExercise.set(key, { set, pct, score: final })
+      }
     }
 
     if (!highlightSet) continue
+
+    const topSetsByExercise = Array.from(bestByExercise.values())
+      .sort((a, b) => b.score - a.score)
+      .map(({ set, pct }) => ({
+        set,
+        pctOneRepMax: pct != null ? Math.round(pct * 100) : null,
+      }))
+
+    const mediaItems: MediaItem[] = [
+      ...topSetsByExercise
+        .filter(({ set }) => set.video_url)
+        .map(({ set }) => ({
+          kind: 'video' as const,
+          url: set.video_url!,
+          label: `${set.exercise_name} · ${set.weight} lbs × ${set.reps}`,
+        })),
+      ...(workout.post_photos ?? []).map(url => ({ kind: 'photo' as const, url })),
+    ]
 
     const extraBadges: string[] = []
     // Future: push 'King Of Lift', 'Location PR', '🔥 Streak' etc. here
@@ -169,6 +205,8 @@ export function buildFeed(
       score: bestFinal,
       pctOneRepMax: highlightPct != null ? Math.round(highlightPct * 100) : null,
       extraBadges,
+      topSetsByExercise,
+      mediaItems,
     })
   }
 

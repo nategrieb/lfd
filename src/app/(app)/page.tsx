@@ -60,9 +60,8 @@ export default async function DashboardPage() {
 
   const { data: rawWorkouts } = await supabase
     .from('workouts')
-    .select('id, name, created_at, user_id, sets(id, exercise_name, weight, reps, rpe, video_url)')
+    .select('id, name, created_at, user_id, post_photos, sets(id, exercise_name, weight, reps, rpe, video_url)')
     .in('user_id', feedUserIds)
-    .eq('status', 'completed')
     .gte('created_at', cutoff.toISOString())
     .order('created_at', { ascending: false })
     .limit(50)

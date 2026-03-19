@@ -93,8 +93,10 @@ export default function VideoModal({ src, title, onClose }: Props) {
             controls
             autoPlay
             playsInline
+            preload="metadata"
             className="max-h-full max-w-full"
             style={{ objectFit: 'contain' }}
+            onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0.001 }}
           />
         </div>
       </div>

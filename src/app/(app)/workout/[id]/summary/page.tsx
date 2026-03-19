@@ -18,7 +18,7 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
 
   const { data: workout } = await supabase
     .from('workouts')
-    .select('id, name, created_at, status, user_id')
+    .select('id, name, created_at, status, user_id, location, post_photos')
     .eq('id', workoutId)
     .single()
 
@@ -75,6 +75,14 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
         <div>
           <h1 className="text-2xl font-semibold mb-1">{workout.name?.trim() || 'Workout Summary'}</h1>
           <p className="text-sm text-zinc-400">{new Date(workout.created_at).toLocaleString()}</p>
+          {(workout as any).location && (
+            <p className="mt-1.5 flex items-center gap-1.5 text-sm text-zinc-300">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 shrink-0 text-zinc-400" aria-hidden="true">
+                <path fillRule="evenodd" d="M9.69 18.933l.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 00.281-.145 13.39 13.39 0 002.206-1.72C14.047 15.497 16 12.51 16 9.5a6 6 0 00-12 0c0 3.01 1.953 5.998 3.168 7.307a13.39 13.39 0 002.523 1.865zm-.004-12.183a2.25 2.25 0 113.182 3.182 2.25 2.25 0 01-3.182-3.182z" clipRule="evenodd" />
+              </svg>
+              {(workout as any).location}
+            </p>
+          )}
         </div>
         {isOwner && (
           <Link
@@ -108,8 +116,28 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
         </div>
       )}
 
-      <SummarySetsSection grouped={grouped} prBadges={prBadges} />
+      {(() => {
+        const photos: string[] = (workout as any).post_photos ?? []
+        if (!photos.length) return null
+        return (
+          <div className="mb-6">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">Photos</h2>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {photos.map((src, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={i}
+                  src={src}
+                  alt={`Workout photo ${i + 1}`}
+                  className="aspect-square w-full rounded-xl object-cover"
+                />
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
+      <SummarySetsSection grouped={grouped} prBadges={prBadges} />
       <div className="mt-8 flex gap-3">
         <Link
           href={isOwner ? '/history' : '/'}

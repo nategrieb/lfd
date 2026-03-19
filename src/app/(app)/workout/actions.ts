@@ -372,10 +372,17 @@ export async function finishWorkout(formData: FormData): Promise<void> {
     throw new Error('Not authenticated.')
   }
 
-  // Mark workout as completed
+  // Mark workout as completed, saving location and post photos
+  const location = formData.get('location') ? String(formData.get('location')).trim() : null
+  const postPhotos = formData.getAll('post_photos').map(String).filter(Boolean)
+
   const { error } = await supabase
     .from('workouts')
-    .update({ status: 'completed' })
+    .update({
+      status: 'completed',
+      location: location || null,
+      post_photos: postPhotos.length > 0 ? postPhotos : null,
+    })
     .eq('id', workoutId)
     .eq('user_id', user.id)
 
@@ -431,6 +438,7 @@ export async function finishWorkout(formData: FormData): Promise<void> {
       .eq('id', user.id)
   }
 
+  revalidatePath('/', 'layout')
   redirect(`/workout/${workoutId}/summary`)
 }
 
