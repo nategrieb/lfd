@@ -42,16 +42,20 @@ export default async function proxy(request: NextRequest) {
   // 2. Authenticated but no username — send to onboarding
   //    Skip the check on auth/onboarding routes to avoid redirect loops.
   if (user && !isAuthPage && !isOnboarding) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('username')
-      .eq('id', user.id)
-      .maybeSingle()
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', user.id)
+        .maybeSingle()
 
-    if (!profile?.username) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/onboarding'
-      return NextResponse.redirect(url, { status: 302 })
+      if (!profile?.username) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/onboarding'
+        return NextResponse.redirect(url, { status: 302 })
+      }
+    } catch {
+      // If the DB check fails, let the request through rather than crashing.
     }
   }
 
