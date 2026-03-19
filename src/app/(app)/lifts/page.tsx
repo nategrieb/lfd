@@ -65,7 +65,7 @@ export default async function LiftsIndexPage() {
         <Link
           href="/history"
           aria-label="Back"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-700 text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-400 transition-colors hover:border-zinc-300 hover:text-zinc-700"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
             <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
@@ -80,7 +80,7 @@ export default async function LiftsIndexPage() {
       </header>
 
       {exercises.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-zinc-700 px-6 py-12 text-center">
+        <div className="rounded-2xl border border-dashed border-zinc-200 px-6 py-12 text-center">
           <p className="text-sm font-medium text-zinc-400">No lifts recorded yet.</p>
           <p className="mt-1 text-xs text-zinc-600">
             Complete a workout to see your lift history here.
@@ -98,14 +98,14 @@ export default async function LiftsIndexPage() {
               <li key={canonical}>
                 <Link
                   href={`/lifts/${slug}`}
-                  className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3.5 transition hover:bg-zinc-800/60"
+                  className="flex items-center gap-3 rounded-xl border border-zinc-100 bg-white shadow-sm px-4 py-3.5 transition hover:bg-zinc-50"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <p className="truncate font-semibold">{canonical}</p>
                       {hasVideo && (
                         <span
-                          className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500"
+                          className="h-1.5 w-1.5 shrink-0 rounded-full bg-green-600"
                           title="Has video"
                           aria-label="Has video"
                         />

@@ -30,9 +30,10 @@ export default function FollowButton({ userId, initialIsFollowing }: Props) {
       disabled={pending}
       className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50 ${
         isFollowing
-          ? 'border border-zinc-600 bg-transparent text-zinc-300 hover:border-red-500 hover:text-red-400'
-          : 'bg-amber-500 text-black hover:bg-amber-400'
+          ? 'border border-zinc-200 bg-transparent text-zinc-600 hover:border-red-400 hover:text-red-500'
+          : 'text-white hover:opacity-90'
       }`}
+      style={isFollowing ? undefined : { background: 'linear-gradient(135deg, #166534, #16a34a)' }}
     >
       {isFollowing ? 'Following' : 'Follow'}
     </button>

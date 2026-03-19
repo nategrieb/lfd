@@ -20,7 +20,8 @@ export default function StartWorkoutButton() {
         })
       }}
       disabled={isPending}
-      className="flex h-14 w-full items-center justify-between rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 text-base font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+      className="flex h-14 w-full items-center justify-between rounded-xl px-4 text-base font-semibold text-white shadow-lg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+      style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
     >
       <span>{isPending ? 'Starting…' : 'Start New Workout'}</span>
       <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/15">

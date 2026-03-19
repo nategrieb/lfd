@@ -85,7 +85,8 @@ export default function ProfileForm({ userId, username, displayName, avatarUrl, 
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="group relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-amber-500 text-2xl font-bold text-black ring-2 ring-transparent transition hover:ring-amber-400 focus:outline-none focus:ring-amber-400"
+          className="group relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full text-2xl font-bold text-white ring-2 ring-transparent transition hover:ring-green-700 focus:outline-none focus:ring-green-700"
+          style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
           aria-label="Change profile photo"
         >
           {displaySrc ? (
@@ -115,10 +116,10 @@ export default function ProfileForm({ userId, username, displayName, avatarUrl, 
       {/* ── Identity ──────────────────────────────────────────── */}
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-zinc-200">Username</label>
-          <p className="mt-0.5 text-xs text-zinc-500">How people find and follow you · 3–30 chars, lowercase letters, numbers, underscores</p>
+          <label className="block text-sm font-medium text-zinc-700">Username</label>
+          <p className="mt-0.5 text-xs text-zinc-400">How people find and follow you · 3–30 chars, lowercase letters, numbers, underscores</p>
           <div className="relative mt-1">
-            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-zinc-500 select-none">@</span>
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-zinc-400 select-none">@</span>
             <input
               name="username"
               type="text"
@@ -126,14 +127,14 @@ export default function ProfileForm({ userId, username, displayName, avatarUrl, 
               onChange={handleChange}
               placeholder="your_handle"
               autoComplete="username"
-              className="w-full rounded-xl border border-zinc-800 bg-zinc-950/70 py-3 pl-7 pr-4 text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full rounded-xl border border-zinc-200 bg-white py-3 pl-7 pr-4 text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-green-700"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-zinc-200">Display name</label>
-          <p className="mt-0.5 text-xs text-zinc-500">Your real name or nickname shown on the feed</p>
+          <label className="block text-sm font-medium text-zinc-700">Display name</label>
+          <p className="mt-0.5 text-xs text-zinc-400">Your real name or nickname shown on the feed</p>
           <input
             name="display_name"
             type="text"
@@ -141,7 +142,7 @@ export default function ProfileForm({ userId, username, displayName, avatarUrl, 
             onChange={handleChange}
             placeholder="Alex Johnson"
             autoComplete="name"
-            className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-950/70 px-4 py-3 text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-green-700"
           />
         </div>
       </div>
@@ -149,48 +150,48 @@ export default function ProfileForm({ userId, username, displayName, avatarUrl, 
       {/* ── Lift Stats ────────────────────────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-zinc-200">Squat 1RM</label>
+          <label className="block text-sm font-medium text-zinc-700">Squat 1RM</label>
           <input
             name="squat"
             type="number"
             step="0.5"
             value={formState.squat}
             onChange={handleChange}
-            className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-950/70 px-4 py-3 text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-green-700"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-zinc-200">Bench 1RM</label>
+          <label className="block text-sm font-medium text-zinc-700">Bench 1RM</label>
           <input
             name="bench"
             type="number"
             step="0.5"
             value={formState.bench}
             onChange={handleChange}
-            className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-950/70 px-4 py-3 text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-green-700"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-zinc-200">Deadlift 1RM</label>
+          <label className="block text-sm font-medium text-zinc-700">Deadlift 1RM</label>
           <input
             name="deadlift"
             type="number"
             step="0.5"
             value={formState.deadlift}
             onChange={handleChange}
-            className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-950/70 px-4 py-3 text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-green-700"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-zinc-200">Preferred unit</label>
+          <label className="block text-sm font-medium text-zinc-700">Preferred unit</label>
           <select
             name="preferredUnit"
             value={formState.preferredUnit}
             onChange={handleChange}
-            className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-950/70 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-green-700"
           >
             <option value="lb">lb</option>
             <option value="kg">kg</option>
@@ -199,13 +200,16 @@ export default function ProfileForm({ userId, username, displayName, avatarUrl, 
       </div>
 
       {message ? (
-        <p className="rounded-lg bg-zinc-800/70 px-4 py-3 text-sm text-zinc-200">{message}</p>
+        <p className={`rounded-lg px-4 py-3 text-sm ${
+          message === 'Saved!' ? 'bg-green-50 text-green-800' : 'bg-zinc-100 text-zinc-700'
+        }`}>{message}</p>
       ) : null}
 
       <button
         type="submit"
         disabled={isPending}
-        className="w-full rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
       >
         {isPending ? 'Saving…' : 'Save profile'}
       </button>

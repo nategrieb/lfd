@@ -18,13 +18,13 @@ export default async function IntegrationsPage() {
       </header>
 
       {/* File Imports section */}
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6">
+      <section className="rounded-2xl border border-zinc-100 bg-white shadow-sm p-6">
         <h2 className="text-lg font-semibold">File Imports</h2>
 
-        <div className="mt-5 border-t border-zinc-800 pt-5">
+          <div className="mt-5 border-t border-zinc-100 pt-5">
           <div className="mb-4 flex items-center gap-3">
             {/* Strong App logo placeholder */}
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-800 text-xs font-bold tracking-tight text-amber-400">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-xs font-bold tracking-tight text-green-700">
               S
             </div>
             <div>

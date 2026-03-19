@@ -80,7 +80,7 @@ export default async function UserProfilePage({ params }: Props) {
       {/* Back */}
       <Link
         href="/people"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white transition-colors"
+        className="mb-6 inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-700 transition-colors"
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
           <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
@@ -90,7 +90,7 @@ export default async function UserProfilePage({ params }: Props) {
 
       {/* Header */}
       <div className="mb-6 flex items-center gap-4">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-amber-500 text-xl font-bold text-black">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full text-xl font-bold text-white" style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}>
           {avatarUrl
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
@@ -107,23 +107,23 @@ export default async function UserProfilePage({ params }: Props) {
 
       {/* Stats */}
       <section className="mb-8 grid grid-cols-3 gap-3">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 text-center">
-          <p className="text-2xl font-bold">{workouts.length}</p>
-          <p className="mt-1 text-xs text-zinc-400">Workouts</p>
+        <div className="rounded-2xl border border-zinc-100 bg-white shadow-sm p-4 text-center">
+          <p className="text-2xl font-bold text-zinc-900">{workouts.length}</p>
+          <p className="mt-1 text-xs text-zinc-500">Workouts</p>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 text-center">
-          <p className="text-2xl font-bold">{thisMonthCount}</p>
-          <p className="mt-1 text-xs text-zinc-400">This month</p>
+        <div className="rounded-2xl border border-zinc-100 bg-white shadow-sm p-4 text-center">
+          <p className="text-2xl font-bold text-zinc-900">{thisMonthCount}</p>
+          <p className="mt-1 text-xs text-zinc-500">This month</p>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 text-center">
-          <p className="text-2xl font-bold">{totalSets}</p>
-          <p className="mt-1 text-xs text-zinc-400">Total sets</p>
+        <div className="rounded-2xl border border-zinc-100 bg-white shadow-sm p-4 text-center">
+          <p className="text-2xl font-bold text-zinc-900">{totalSets}</p>
+          <p className="mt-1 text-xs text-zinc-500">Total sets</p>
         </div>
       </section>
 
       {/* Big-three 1RMs */}
       {orms.length > 0 && (
-        <section className="mb-8 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+        <section className="mb-8 rounded-2xl border border-zinc-100 bg-white shadow-sm p-5">
           <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-500">
             1-Rep Maxes
           </h2>
@@ -145,7 +145,7 @@ export default async function UserProfilePage({ params }: Props) {
         </h2>
 
         {feedItems.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-zinc-700 px-6 py-12 text-center">
+          <div className="rounded-2xl border border-dashed border-zinc-200 px-6 py-12 text-center">
             <p className="text-sm text-zinc-400">No workouts yet.</p>
           </div>
         ) : (

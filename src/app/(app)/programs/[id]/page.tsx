@@ -71,7 +71,7 @@ export default async function ProgramDetailPage({
         <Link
           href="/programs"
           aria-label="Back"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-700 text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-400 transition-colors hover:border-zinc-300 hover:text-zinc-700"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
             <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
@@ -84,7 +84,7 @@ export default async function ProgramDetailPage({
         {enrollment && (
           <Link
             href={`/programs/${templateId}/progress`}
-            className="shrink-0 rounded-xl border border-amber-600/50 bg-amber-900/20 px-3 py-1.5 text-xs font-semibold text-amber-400 transition hover:bg-amber-900/40"
+            className="shrink-0 rounded-xl border border-green-700/50 bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 transition hover:bg-green-100"
           >
             Progress →
           </Link>
@@ -96,7 +96,7 @@ export default async function ProgramDetailPage({
       )}
 
       {enrolled === '1' && (
-        <div className="mb-6 rounded-xl border border-emerald-700 bg-emerald-900/30 px-4 py-3 text-sm text-emerald-300">
+        <div className="mb-6 rounded-xl border border-green-700/40 bg-green-50 px-4 py-3 text-sm text-green-700">
           You&apos;re enrolled! Planned workouts have been added to your calendar.{' '}
           <Link href={`/programs/${templateId}/progress`} className="underline">View progress →</Link>
         </div>
@@ -104,8 +104,8 @@ export default async function ProgramDetailPage({
 
       {/* Active enrollment status */}
       {enrollment ? (
-        <div className="mb-6 rounded-2xl border border-amber-600/40 bg-amber-900/20 px-5 py-4">
-          <p className="text-sm font-semibold text-amber-400">Currently enrolled</p>
+          <div className="mb-6 rounded-2xl border border-green-700/30 bg-green-50 px-5 py-4">
+          <p className="text-sm font-semibold text-green-700">Currently enrolled</p>
           <p className="mt-1 text-xs text-zinc-400">
             {new Date(enrollment.start_date).toLocaleDateString()} –{' '}
             {enrollment.end_date ? new Date(enrollment.end_date).toLocaleDateString() : '–'}
@@ -116,7 +116,7 @@ export default async function ProgramDetailPage({
           <UnenrollButton enrollmentId={enrollment.id} templateId={templateId} />
         </div>
       ) : (
-        <section className="mb-8 rounded-2xl border border-zinc-700 bg-zinc-900/60 px-5 py-5">
+        <section className="mb-8 rounded-2xl border border-zinc-100 bg-white shadow-sm px-5 py-5">
           <h2 className="mb-4 text-base font-semibold">Enroll in this program</h2>
           <EnrollForm
             programId={tmpl.id}
@@ -139,20 +139,20 @@ export default async function ProgramDetailPage({
               </p>
               <div className="space-y-2">
                 {(days ?? []).map((tw) => (
-                  <div key={tw.id} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
+                  <div key={tw.id} className="rounded-xl border border-zinc-100 bg-zinc-50 p-3">
                     <p className="text-xs font-semibold text-zinc-300">{tw.name}</p>
                     <ul className="mt-2 space-y-1">
                       {((tw.template_sets ?? []) as any[])
                         .sort((a, b) => a.sort_order - b.sort_order)
                         .map((ts: any) => (
                           <li key={ts.id} className="flex flex-wrap items-baseline gap-x-2 text-xs text-zinc-400">
-                            <span className="font-medium text-zinc-200">{ts.exercise_name}</span>
+                            <span className="font-medium text-zinc-900">{ts.exercise_name}</span>
                             <span>{ts.sets_count}×{ts.reps ?? ts.reps_note}</span>
                             {ts.percentage && (
-                              <span className="text-amber-400">@{Math.round(ts.percentage * 100)}%</span>
+                              <span className="text-green-700">@{Math.round(ts.percentage * 100)}%</span>
                             )}
                             {ts.target_rpe && (
-                              <span className="text-amber-400">RPE {ts.target_rpe}</span>
+                              <span className="text-green-700">RPE {ts.target_rpe}</span>
                             )}
                             {ts.tempo && <span className="text-zinc-600">{ts.tempo}</span>}
                           </li>

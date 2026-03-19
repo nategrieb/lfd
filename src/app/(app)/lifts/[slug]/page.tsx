@@ -136,7 +136,7 @@ export default async function LiftDetailPage({
         <Link
           href="/lifts"
           aria-label="Back to all lifts"
-          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-700 text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200"
+          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-400 transition-colors hover:border-zinc-300 hover:text-zinc-700"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
             <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
@@ -152,8 +152,8 @@ export default async function LiftDetailPage({
 
       {/* PR stats */}
       <section className="mb-6 grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-amber-500">
+        <div className="rounded-2xl border border-green-700/30 bg-green-50 p-4">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-green-700">
             Best Set
           </p>
           <p className="text-2xl font-bold">{prWeight} lbs</p>
@@ -161,7 +161,7 @@ export default async function LiftDetailPage({
             {prReps} rep{prReps !== 1 ? 's' : ''}
           </p>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
+        <div className="rounded-2xl border border-zinc-100 bg-white shadow-sm p-4">
           <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-zinc-500">
             Est. 1RM
           </p>
@@ -172,7 +172,7 @@ export default async function LiftDetailPage({
 
       {/* Progress chart */}
       {chartData.length >= 2 && (
-        <section className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
+        <section className="mb-6 rounded-2xl border border-zinc-100 bg-white shadow-sm p-4">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
             Est. 1RM Progress · {chartData.length} sessions
           </p>
@@ -207,12 +207,12 @@ export default async function LiftDetailPage({
           {sessions.map(session => (
             <div
               key={session.workoutId}
-              className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40"
+              className="overflow-hidden rounded-xl border border-zinc-100 bg-white shadow-sm"
             >
               {/* Session header — taps to full summary */}
               <Link
                 href={`/workout/${session.workoutId}/summary`}
-                className="flex items-center justify-between px-4 py-3 transition-colors hover:bg-zinc-800/40"
+                className="flex items-center justify-between px-4 py-3 transition-colors hover:bg-zinc-50"
               >
                 <div>
                   <p className="text-sm font-semibold">
@@ -229,7 +229,7 @@ export default async function LiftDetailPage({
                 </div>
                 <div className="flex items-center gap-2">
                   {session.bestE1RM !== null && (
-                    <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-bold text-amber-300">
+                    <span className="rounded-full px-2 py-0.5 text-xs font-bold text-white" style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}>
                       e1RM {session.bestE1RM}
                     </span>
                   )}
@@ -246,7 +246,7 @@ export default async function LiftDetailPage({
               </Link>
 
               {/* Sets list */}
-              <div className="border-t border-zinc-800 px-4 pb-3 pt-2">
+              <div className="border-t border-zinc-100 px-4 pb-3 pt-2">
                 <ul className="space-y-1">
                   {session.sets.map((set, i) => {
                     const isBest = set === session.bestSet
@@ -255,10 +255,10 @@ export default async function LiftDetailPage({
                       <li
                         key={set.id}
                         className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-sm ${
-                          isBest ? 'bg-amber-500/10' : ''
+                          isBest ? 'bg-green-50' : ''
                         }`}
                       >
-                        <span className={`text-xs ${isBest ? 'text-amber-400' : 'text-zinc-500'}`}>
+                        <span className={`text-xs ${isBest ? 'text-green-700' : 'text-zinc-500'}`}>
                           Set {i + 1}
                         </span>
                         <span className={`font-medium ${isBest ? 'text-white' : ''}`}>
@@ -266,7 +266,7 @@ export default async function LiftDetailPage({
                         </span>
                         <div className="flex items-center gap-1.5">
                           {set.rpe !== null && (
-                            <span className="rounded bg-zinc-700/80 px-1.5 py-0.5 text-xs text-zinc-300">
+                            <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-600">
                               RPE {set.rpe}
                             </span>
                           )}
@@ -275,7 +275,7 @@ export default async function LiftDetailPage({
                           )}
                           {set.video_url && (
                             <span
-                              className="h-1.5 w-1.5 rounded-full bg-amber-500"
+                              className="h-1.5 w-1.5 rounded-full bg-green-600"
                               title="Has video"
                             />
                           )}

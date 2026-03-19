@@ -78,11 +78,12 @@ export default async function PeoplePage({ searchParams }: { searchParams: Searc
             defaultValue={q}
             placeholder="Search by username…"
             autoComplete="off"
-            className="flex-1 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-white placeholder-zinc-500 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+            className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 outline-none focus:border-green-700 focus:ring-1 focus:ring-green-700"
           />
           <button
             type="submit"
-            className="rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-black hover:bg-amber-400 transition-colors"
+            className="rounded-xl px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-colors"
+            style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
           >
             Search
           </button>
@@ -103,7 +104,7 @@ export default async function PeoplePage({ searchParams }: { searchParams: Searc
                 const href = profile.username ? `/people/${profile.username}` : null
                 const inner = (
                   <>
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-sm font-bold text-white">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-sm font-bold text-zinc-700">
                       {((profile.display_name ?? profile.username)?.[0] ?? '?').toUpperCase()}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -119,7 +120,7 @@ export default async function PeoplePage({ searchParams }: { searchParams: Searc
                 return (
                   <li
                     key={profile.id}
-                    className="flex items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3"
+                    className="flex items-center gap-3 rounded-2xl border border-zinc-100 bg-white px-4 py-3 shadow-sm"
                   >
                     {href ? (
                       <Link href={href} className="flex min-w-0 flex-1 items-center gap-3 hover:opacity-80 transition-opacity">
@@ -146,9 +147,9 @@ export default async function PeoplePage({ searchParams }: { searchParams: Searc
           Following{followingProfiles.length > 0 ? ` · ${followingProfiles.length}` : ''}
         </h2>
         {followingProfiles.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-zinc-700 px-6 py-10 text-center">
+          <div className="rounded-2xl border border-dashed border-zinc-200 px-6 py-10 text-center">
             <p className="text-sm text-zinc-400">You&apos;re not following anyone yet.</p>
-            <p className="mt-1 text-xs text-zinc-600">
+            <p className="mt-1 text-xs text-zinc-300">
               Search for a username above to find friends.
             </p>
           </div>
@@ -158,7 +159,10 @@ export default async function PeoplePage({ searchParams }: { searchParams: Searc
               const href = profile.username ? `/people/${profile.username}` : null
               const inner = (
                 <>
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-black">
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                    style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
+                  >
                     {((profile.display_name ?? profile.username)?.[0] ?? '?').toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">

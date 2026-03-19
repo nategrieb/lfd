@@ -44,8 +44,8 @@ export default function LiftChart({ data }: { data: ChartPoint[] }) {
     >
       <defs>
         <linearGradient id="lift-area" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#E8B84B" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="#E8B84B" stopOpacity="0.03" />
+          <stop offset="0%" stopColor="#166534" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#166534" stopOpacity="0.02" />
         </linearGradient>
       </defs>
 
@@ -56,7 +56,7 @@ export default function LiftChart({ data }: { data: ChartPoint[] }) {
       <path
         d={linePath}
         fill="none"
-        stroke="#E8B84B"
+        stroke="#166534"
         strokeWidth="1.8"
         strokeLinejoin="round"
         strokeLinecap="round"
@@ -69,8 +69,8 @@ export default function LiftChart({ data }: { data: ChartPoint[] }) {
           cx={p.x}
           cy={p.y}
           r={i === maxIdx ? 4 : 2.5}
-          fill={i === maxIdx ? '#E8B84B' : '#3f3f46'}
-          stroke={i === maxIdx ? '#fbbf24' : '#71717a'}
+          fill={i === maxIdx ? '#16a34a' : '#e4e4e7'}
+          stroke={i === maxIdx ? '#166534' : '#a1a1aa'}
           strokeWidth="1"
         />
       ))}

@@ -71,22 +71,22 @@ export default function FinishWorkoutSheet({ workoutId, userId, onClose, onBefor
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end bg-black/70"
+      className="fixed inset-0 z-[60] flex items-end bg-black/50"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="w-full rounded-t-3xl border-t border-zinc-700 bg-zinc-950 p-6 max-h-[90dvh] overflow-y-auto" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 5rem)' }}>
+      <div className="w-full rounded-t-3xl border-t border-zinc-100 bg-white p-6 max-h-[90dvh] overflow-y-auto" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 5rem)' }}>
 
         {/* Handle + header */}
         <div className="mb-1 flex justify-center">
-          <div className="h-1 w-10 rounded-full bg-zinc-700" />
+          <div className="h-1 w-10 rounded-full bg-zinc-200" />
         </div>
         <div className="mb-6 mt-3 flex items-center justify-between">
-          <h2 className="text-xl font-extrabold tracking-tight">Complete workout</h2>
+          <h2 className="text-xl font-extrabold tracking-tight text-zinc-900">Complete workout</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-700"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
               <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
@@ -96,10 +96,10 @@ export default function FinishWorkoutSheet({ workoutId, userId, onClose, onBefor
 
         {/* Location */}
         <div className="mb-6">
-          <label className="mb-1.5 block text-sm font-semibold text-zinc-200">
+          <label className="mb-1.5 block text-sm font-semibold text-zinc-800">
             Where did you lift?
           </label>
-          <p className="mb-2 text-xs text-zinc-500">Gym, home, or wherever you trained today</p>
+          <p className="mb-2 text-xs text-zinc-400">Gym, home, or wherever you trained today</p>
           <div className="relative">
             <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-zinc-500">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
@@ -112,18 +112,18 @@ export default function FinishWorkoutSheet({ workoutId, userId, onClose, onBefor
               onChange={(e) => setLocation(e.target.value)}
               placeholder="e.g. Equinox, Home gym…"
               maxLength={100}
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-900 py-3 pl-9 pr-4 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full rounded-xl border border-zinc-200 bg-white py-3 pl-9 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-green-700"
             />
           </div>
         </div>
 
         {/* Post photos */}
         <div className="mb-6">
-          <label className="mb-1.5 block text-sm font-semibold text-zinc-200">
+          <label className="mb-1.5 block text-sm font-semibold text-zinc-800">
             Post photos
-            <span className="ml-2 text-xs font-normal text-zinc-500">optional · up to 5</span>
+            <span className="ml-2 text-xs font-normal text-zinc-400">optional · up to 5</span>
           </label>
-          <p className="mb-3 text-xs text-zinc-500">
+          <p className="mb-3 text-xs text-zinc-400">
             Selfies, PRs, anything you want to share with your followers
           </p>
 
@@ -141,7 +141,7 @@ export default function FinishWorkoutSheet({ workoutId, userId, onClose, onBefor
                     type="button"
                     onClick={() => removePhoto(i)}
                     aria-label={`Remove photo ${i + 1}`}
-                    className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-zinc-950 text-white ring-1 ring-zinc-700 hover:bg-zinc-800"
+                    className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-white text-zinc-600 ring-1 ring-zinc-200 hover:bg-zinc-50"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3" aria-hidden="true">
                       <path d="M5.28 4.22a.75.75 0 00-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 101.06 1.06L8 9.06l2.72 2.72a.75.75 0 101.06-1.06L9.06 8l2.72-2.72a.75.75 0 00-1.06-1.06L8 6.94 5.28 4.22z" />
@@ -154,7 +154,7 @@ export default function FinishWorkoutSheet({ workoutId, userId, onClose, onBefor
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl border-2 border-dashed border-zinc-700 text-zinc-500 hover:border-zinc-500 hover:text-zinc-300"
+                  className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl border-2 border-dashed border-zinc-200 text-zinc-400 hover:border-zinc-300 hover:text-zinc-500"
                   aria-label="Add another photo"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-6 w-6" aria-hidden="true">
@@ -169,7 +169,7 @@ export default function FinishWorkoutSheet({ workoutId, userId, onClose, onBefor
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-zinc-700 py-5 text-sm font-medium text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 transition-colors"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-zinc-200 py-5 text-sm font-medium text-zinc-400 hover:border-zinc-300 hover:text-zinc-500 transition-colors"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
@@ -198,7 +198,8 @@ export default function FinishWorkoutSheet({ workoutId, userId, onClose, onBefor
           type="button"
           onClick={handleComplete}
           disabled={isPending}
-          className="w-full rounded-xl bg-white py-4 text-base font-bold text-black transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-xl py-4 text-base font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
         >
           {isPending ? 'Saving…' : 'Complete workout'}
         </button>

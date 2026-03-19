@@ -27,7 +27,7 @@ export default async function ProfilePage() {
         <p className="text-sm text-zinc-400">{user.email}</p>
       </header>
 
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6">
+      <section className="rounded-2xl border border-zinc-100 bg-white shadow-sm p-6">
         <h2 className="text-lg font-semibold">Profile</h2>
         <p className="mt-1 text-xs text-zinc-400">Set your name so friends can find you, and update your 1RMs.</p>
 
@@ -48,7 +48,7 @@ export default async function ProfilePage() {
       {/* Integrations */}
       <Link
         href="/settings/integrations"
-        className="mt-4 flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 transition hover:border-zinc-600"
+        className="mt-4 flex items-center justify-between rounded-2xl border border-zinc-100 bg-white shadow-sm p-5 transition hover:border-zinc-200"
       >
         <div>
           <p className="font-semibold">Integrations</p>

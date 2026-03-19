@@ -29,7 +29,7 @@ export default async function ProgramsPage() {
         <Link
           href="/history"
           aria-label="Back"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-700 text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-400 transition-colors hover:border-zinc-300 hover:text-zinc-700"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
             <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
@@ -42,7 +42,7 @@ export default async function ProgramsPage() {
       </header>
 
       {(programs ?? []).length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-zinc-700 px-6 py-12 text-center">
+        <div className="rounded-2xl border border-dashed border-zinc-200 px-6 py-12 text-center">
           <p className="text-sm font-medium text-zinc-400">No programs available yet.</p>
         </div>
       ) : (
@@ -51,13 +51,13 @@ export default async function ProgramsPage() {
             <li key={p.id}>
               <Link
                 href={`/programs/${p.id}`}
-                className="flex items-center justify-between gap-4 rounded-2xl border border-zinc-800 bg-zinc-900/60 px-5 py-4 transition hover:border-zinc-600"
+                className="flex items-center justify-between gap-4 rounded-2xl border border-zinc-100 bg-white shadow-sm px-5 py-4 transition hover:border-zinc-200"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-semibold">{p.name}</p>
                     {enrolledIds.has(p.id) && (
-                      <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-black">Active</span>
+                      <span className="rounded-full px-2 py-0.5 text-xs font-bold text-white" style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}>Active</span>
                     )}
                   </div>
                   <p className="mt-0.5 text-xs text-zinc-400">{p.duration_weeks} weeks</p>

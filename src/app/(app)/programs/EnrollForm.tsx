@@ -51,7 +51,7 @@ export default function EnrollForm({ programId, durationWeeks, squatMax, benchMa
           type="date"
           defaultValue={nextMonday()}
           required
-          className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm text-white focus:border-amber-500 focus:outline-none"
+          className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 focus:border-green-700 focus:outline-none focus:ring-1 focus:ring-green-700"
         />
         <p className="mt-1 text-xs text-zinc-500">
           {durationWeeks} weeks · ends ~{(() => {
@@ -83,7 +83,7 @@ export default function EnrollForm({ programId, durationWeeks, squatMax, benchMa
                   defaultValue={val ?? ''}
                   required
                   placeholder="lbs"
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
+                  className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-green-700 focus:outline-none focus:ring-1 focus:ring-green-700"
                 />
               </div>
             )
@@ -98,7 +98,8 @@ export default function EnrollForm({ programId, durationWeeks, squatMax, benchMa
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-xl bg-amber-500 py-3 text-sm font-bold text-black transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full rounded-xl py-3 text-sm font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
       >
         {pending ? 'Enrolling…' : 'Start Program'}
       </button>

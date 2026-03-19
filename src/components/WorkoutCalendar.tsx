@@ -71,7 +71,7 @@ export default function WorkoutCalendar({ workoutDates }: { workoutDates: Workou
         <button
           onClick={prevMonth}
           aria-label="Previous month"
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
             <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
@@ -81,7 +81,7 @@ export default function WorkoutCalendar({ workoutDates }: { workoutDates: Workou
         <button
           onClick={nextMonth}
           aria-label="Next month"
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
             <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
@@ -127,22 +127,22 @@ export default function WorkoutCalendar({ workoutDates }: { workoutDates: Workou
               }}
               className={[
                 'relative flex h-9 flex-col items-center justify-center rounded-lg text-sm transition-colors',
-                isToday ? 'ring-1 ring-amber-500/60' : '',
-                isClickable ? 'cursor-pointer hover:bg-zinc-800' : 'cursor-default',
-                hasCompleted && !isToday ? 'bg-amber-500/10' : '',
+                isToday ? 'ring-1 ring-green-600/60' : '',
+                isClickable ? 'cursor-pointer hover:bg-zinc-100' : 'cursor-default',
+                hasCompleted && !isToday ? 'bg-green-50' : '',
               ].filter(Boolean).join(' ')}
             >
               <span className={[
                 'text-sm leading-none',
-                isToday ? 'font-bold text-amber-400' : '',
-                !hasCompleted && !hasPlanned && !isToday ? 'text-zinc-600' : 'text-zinc-200',
+                isToday ? 'font-bold text-green-700' : '',
+                !hasCompleted && !hasPlanned && !isToday ? 'text-zinc-400' : 'text-zinc-900',
               ].filter(Boolean).join(' ')}>
                 {cell.day}
               </span>
               {(hasCompleted || hasPlanned) && (
                 <span className={[
                   'mt-0.5 h-1 w-1 rounded-full',
-                  hasCompleted ? 'bg-amber-500' : 'bg-zinc-500',
+                  hasCompleted ? 'bg-green-600' : 'bg-zinc-400',
                 ].join(' ')} />
               )}
             </button>

@@ -94,8 +94,17 @@ export default async function DashboardPage() {
 
       {/* ── Header ─────────────────────────────────────────────────── */}
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-extrabold tracking-tight">LFD</h1>
-        <Link href="/profile" className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-amber-500 text-sm font-bold text-black">
+        <div
+          className="flex h-8 w-8 items-center justify-center text-xs font-black tracking-widest text-white"
+          style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
+        >
+          LFD
+        </div>
+        <Link
+          href="/profile"
+          className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full text-sm font-bold text-white"
+          style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
+        >
           {profileMap[user.id]?.avatarUrl
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={profileMap[user.id].avatarUrl!} alt="Profile" className="h-full w-full object-cover" />
@@ -108,7 +117,8 @@ export default async function DashboardPage() {
         {activeWorkout ? (
           <Link
             href={`/workout/${activeWorkout.id}`}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 text-lg font-semibold text-black shadow-lg shadow-orange-500/20 transition hover:brightness-110"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-lg font-semibold text-white shadow-lg transition hover:opacity-90"
+            style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
           >
             Continue Workout →
           </Link>
@@ -128,15 +138,15 @@ export default async function DashboardPage() {
           <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
             Highlights
           </h2>
-          <Link href="/history" className="text-xs font-medium text-zinc-400 hover:text-white transition-colors">
+          <Link href="/history" className="text-xs font-medium text-zinc-400 hover:text-green-700 transition-colors">
             All workouts →
           </Link>
         </div>
 
         {feedItems.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-zinc-700 px-6 py-12 text-center">
+          <div className="rounded-2xl border border-dashed border-zinc-200 px-6 py-12 text-center">
             <p className="text-sm font-medium text-zinc-400">No workouts yet.</p>
-            <p className="mt-1 text-xs text-zinc-600">Log your first session and it will appear here.</p>
+            <p className="mt-1 text-xs text-zinc-300">Log your first session and it will appear here.</p>
           </div>
         ) : (
           <ul className="space-y-4">

@@ -83,7 +83,7 @@ export default function AddSetForm({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-100 hover:bg-zinc-800"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-50"
       >
         <span className="text-sm leading-none">+</span>
         Add set
@@ -93,7 +93,7 @@ export default function AddSetForm({
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="rounded-xl border border-blue-500/40 bg-zinc-950/40 px-3 py-2">
+      <div className="rounded-xl border border-green-200 bg-green-50 px-3 py-2">
         <div className="grid grid-cols-[22px_minmax(0,1fr)_minmax(0,1fr)_64px_36px] items-center gap-2">
           <span className="text-xs font-medium text-zinc-600">+</span>
 
@@ -105,7 +105,7 @@ export default function AddSetForm({
             placeholder="lbs"
             value={formState.weight}
             onChange={handleChange}
-            className="h-10 rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-green-700"
           />
           <input
             name="reps"
@@ -114,7 +114,7 @@ export default function AddSetForm({
             placeholder="reps"
             value={formState.reps}
             onChange={handleChange}
-            className="h-10 rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-green-700"
           />
           <input
             name="rpe"
@@ -125,14 +125,15 @@ export default function AddSetForm({
             placeholder="RPE"
             value={formState.rpe}
             onChange={handleChange}
-            className="h-10 rounded-lg border border-zinc-700 bg-zinc-900 px-2 text-center text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="h-10 rounded-lg border border-zinc-200 bg-white px-2 text-center text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-green-700"
           />
 
           <button
             type="submit"
             disabled={isPending}
             aria-label="Save set"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/40 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
           >
             {isPending ? (
               <span className="text-[10px]">…</span>
@@ -148,7 +149,7 @@ export default function AddSetForm({
           <button
             type="button"
             onClick={() => { setIsOpen(false); setMessage(null) }}
-            className="text-xs text-zinc-500 hover:text-zinc-300"
+            className="text-xs text-zinc-400 hover:text-zinc-600"
           >
             Cancel
           </button>

@@ -73,7 +73,7 @@ export default function VideoModal({ src, title, onClose }: Props) {
             type="button"
             onClick={onClose}
             aria-label="Close video"
-            className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-800/80 text-white transition hover:bg-zinc-700"
+            className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition" style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -82,7 +82,7 @@ export default function VideoModal({ src, title, onClose }: Props) {
         </div>
 
         {/* Swipe hint — visible for a moment on mobile */}
-        <p className="text-center text-[10px] text-zinc-600 -mt-1 mb-2 select-none">
+        <p className="text-center text-[10px] text-zinc-400 -mt-1 mb-2 select-none">
           Swipe down to close
         </p>
 

@@ -26,16 +26,16 @@ export default function SummarySetsSection({ grouped, prBadges }: Props) {
   return (
     <>
       {Object.entries(grouped).map(([exercise, sets]) => (
-        <div key={exercise} className="mb-6 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+        <div key={exercise} className="mb-6 rounded-xl border border-zinc-100 bg-white p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-3">
             <Link
               href={`/lifts/${nameToSlug(exercise)}`}
-              className="text-base font-bold hover:text-amber-400 transition-colors"
+              className="text-base font-bold text-zinc-900 hover:text-green-700 transition-colors"
             >
               {exercise}
             </Link>
             {prBadges[exercise] && (
-              <span className="inline-flex items-center gap-1 rounded bg-amber-500/20 px-2 py-0.5 text-xs font-bold text-amber-300">
+              <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-bold text-white" style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}>
                 🔥 NEW PR
               </span>
             )}
@@ -45,7 +45,7 @@ export default function SummarySetsSection({ grouped, prBadges }: Props) {
             {sets.map((set, i) => (
               <li
                 key={set.id}
-                className="flex items-center gap-2 rounded-lg bg-zinc-950/40 px-3 py-2 text-sm"
+                className="flex items-center gap-2 rounded-lg bg-zinc-50 px-3 py-2 text-sm"
               >
                 {/* Set number */}
                 <span className="w-10 shrink-0 text-zinc-500">Set {i + 1}</span>
@@ -69,7 +69,7 @@ export default function SummarySetsSection({ grouped, prBadges }: Props) {
                       })
                     }
                     aria-label={`Play video for ${exercise} set ${i + 1}`}
-                    className="flex shrink-0 items-center gap-1.5 rounded-lg bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-400 transition hover:bg-amber-500/25"
+                    className="flex shrink-0 items-center gap-1.5 rounded-lg bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700 transition hover:bg-green-100"
                   >
                     {/* Play icon */}
                     <svg

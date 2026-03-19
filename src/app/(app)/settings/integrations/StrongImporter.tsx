@@ -35,10 +35,10 @@ export default function StrongImporter() {
         role="button"
         tabIndex={0}
         aria-label="Select or drop CSV file"
-        className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-8 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
+        className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-8 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-700 ${
           isDragging
-            ? 'border-amber-500 bg-amber-500/10'
-            : 'border-zinc-700 bg-zinc-900/40 hover:border-amber-500/60 hover:bg-zinc-900/70'
+            ? 'border-green-700 bg-green-50'
+            : 'border-zinc-200 bg-zinc-50 hover:border-green-700/40 hover:bg-zinc-100'
         }`}
         onClick={() => inputRef.current?.click()}
         onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && inputRef.current?.click()}
@@ -63,7 +63,7 @@ export default function StrongImporter() {
         </svg>
 
         {filename ? (
-          <p className="text-sm font-medium text-amber-400 break-all">{filename}</p>
+          <p className="text-sm font-medium text-green-700 break-all">{filename}</p>
         ) : (
           <>
             <p className="text-sm font-medium text-zinc-300">Drop your Strong export here</p>
@@ -120,7 +120,8 @@ export default function StrongImporter() {
       <button
         type="submit"
         disabled={isPending || !filename}
-        className="w-full rounded-xl bg-amber-500 py-3 text-sm font-semibold text-black transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full rounded-xl py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
       >
         {isPending ? (
           <span className="flex items-center justify-center gap-2">

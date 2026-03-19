@@ -89,7 +89,7 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
             href={`/workout/${workout.id}`}
             aria-label="Edit workout"
             title="Edit workout"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -110,8 +110,8 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
       </div>
 
       {totalVolume > 0 && (
-        <div className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 text-center">
-          <p className="text-3xl font-bold">{new Intl.NumberFormat('en-US').format(totalVolume)} lbs</p>
+          <div className="mb-6 rounded-2xl border border-zinc-100 bg-white p-4 text-center shadow-sm">
+          <p className="text-3xl font-bold text-zinc-900">{new Intl.NumberFormat('en-US').format(totalVolume)} lbs</p>
           <p className="text-xs text-zinc-400">Total volume</p>
         </div>
       )}
@@ -121,7 +121,7 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
         if (!photos.length) return null
         return (
           <div className="mb-6">
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">Photos</h2>
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">Photos</h2>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {photos.map((src, i) => (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -141,14 +141,15 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
       <div className="mt-8 flex gap-3">
         <Link
           href={isOwner ? '/history' : '/'}
-          className="flex-1 rounded-xl border border-zinc-700 py-3 text-center text-sm font-semibold text-zinc-200 transition active:bg-zinc-800"
+          className="flex-1 rounded-xl border border-zinc-200 py-3 text-center text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50"
         >
           {isOwner ? 'History' : 'Feed'}
         </Link>
         {isOwner && (
           <Link
             href="/workout"
-            className="flex-1 rounded-xl bg-amber-500 py-3 text-center text-sm font-semibold text-black transition hover:bg-amber-400"
+            className="flex-1 rounded-xl py-3 text-center text-sm font-semibold text-white transition hover:opacity-90"
+            style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
           >
             New Workout
           </Link>

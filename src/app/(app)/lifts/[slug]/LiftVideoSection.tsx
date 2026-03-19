@@ -25,16 +25,16 @@ export default function LiftVideoSection({ clips }: { clips: VideoClip[] }) {
             key={i}
             type="button"
             onClick={() => setActive(clip)}
-            className="group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/80 text-left transition hover:border-amber-500/50"
+            className="group overflow-hidden rounded-xl border border-zinc-100 bg-white shadow-sm text-left transition hover:border-green-700/30"
           >
             {/* Play-button thumbnail */}
-            <div className="flex aspect-video items-center justify-center bg-zinc-800/60">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/20 transition group-hover:bg-amber-500/40">
+            <div className="flex aspect-video items-center justify-center bg-zinc-100">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-green-50 transition group-hover:bg-green-100" style={{ boxShadow: '0 0 0 1px #16653420' }}>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="currentColor"
-                  className="h-5 w-5 text-amber-400"
+                  className="h-5 w-5 text-green-700"
                   aria-hidden="true"
                 >
                   <path d="M8 5v14l11-7z" />
@@ -42,7 +42,7 @@ export default function LiftVideoSection({ clips }: { clips: VideoClip[] }) {
               </span>
             </div>
             <div className="px-3 py-2">
-              <p className="truncate text-xs font-semibold text-zinc-200">{clip.title}</p>
+              <p className="truncate text-xs font-semibold text-zinc-900">{clip.title}</p>
               <p className="text-[10px] text-zinc-500">{clip.date}</p>
             </div>
           </button>

@@ -401,14 +401,14 @@ export default function WorkoutSession({
           onBeforeFinish={persistAllChanges}
         />
       )}
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+      <div className="rounded-xl border border-zinc-100 bg-white p-4 shadow-sm">
         <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-400">Workout Name</label>
         <div className="mt-2 flex items-center gap-2">
           <input
             value={draftWorkoutName}
             onChange={(event) => setDraftWorkoutName(event.target.value)}
             maxLength={80}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950/70 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-green-700"
             placeholder="Leg Day, Heavy Singles, etc."
           />
         </div>
@@ -422,33 +422,33 @@ export default function WorkoutSession({
             const exerciseSets = groupedSets[exerciseName] ?? []
             const latestSet = exerciseSets.length ? exerciseSets[exerciseSets.length - 1] : null
             return (
-            <div id={exerciseDomId(exerciseName)} key={exerciseName} className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+            <div id={exerciseDomId(exerciseName)} key={exerciseName} className="rounded-xl border border-zinc-100 bg-white p-4 shadow-sm">
               {(() => {
                 const groups = scheduledSetGroupsMap?.get(exerciseName.toLowerCase())
                 if (!groups?.length) return null
                 return (
-                  <div className="mb-3 rounded-lg border border-amber-700/30 bg-amber-950/40 px-3 py-2.5">
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-amber-500/80">Target</p>
+                  <div className="mb-3 rounded-lg border border-green-700/20 bg-green-50 px-3 py-2.5">
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-green-700">Target</p>
                     <div className="space-y-2">
                       {groups.map((ss, gi) => (
                         <div key={gi}>
                           {gi > 0 && (
                             <div className="mb-2 flex items-center gap-2">
-                              <div className="h-px flex-1 bg-amber-800/40" />
-                              <span className="text-[10px] font-medium uppercase tracking-wider text-amber-700/70">then</span>
-                              <div className="h-px flex-1 bg-amber-800/40" />
+                              <div className="h-px flex-1 bg-green-200" />
+                              <span className="text-[10px] font-medium uppercase tracking-wider text-green-600">then</span>
+                              <div className="h-px flex-1 bg-green-200" />
                             </div>
                           )}
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                            <span className="text-sm font-bold text-amber-200">
+                            <span className="text-sm font-bold text-green-800">
                               {ss.sets_count}×{ss.reps ?? ss.reps_note}
                             </span>
                             {ss.calculated_weight != null ? (
-                              <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-black">
+                              <span className="rounded-full px-2 py-0.5 text-xs font-bold text-white" style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}>
                                 {ss.calculated_weight} lbs
                               </span>
                             ) : ss.target_rpe ? (
-                              <span className="rounded-full border border-amber-500 px-2 py-0.5 text-xs font-semibold text-amber-300">
+                              <span className="rounded-full border border-green-700 px-2 py-0.5 text-xs font-semibold text-green-700">
                                 RPE {ss.target_rpe}
                               </span>
                             ) : null}
@@ -474,7 +474,7 @@ export default function WorkoutSession({
                 <div>
                   <Link
                     href={`/lifts/${nameToSlug(exerciseName)}`}
-                    className="text-sm font-semibold text-white hover:text-amber-400 transition-colors"
+                    className="text-sm font-semibold text-zinc-900 hover:text-green-700 transition-colors"
                     onClick={e => e.stopPropagation()}
                   >
                     {exerciseName}
@@ -495,7 +495,7 @@ export default function WorkoutSession({
                   {exerciseSets.map((set, index) => (
                     <li
                       key={set.id}
-                      className="rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2"
+                      className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2"
                     >
                       <div className="grid grid-cols-[22px_minmax(0,1fr)_minmax(0,1fr)_64px_36px] items-center gap-2">
                         <span className="text-xs font-medium text-zinc-400">{index + 1}</span>
@@ -510,7 +510,7 @@ export default function WorkoutSession({
                               [set.id]: { ...prev[set.id], weight: event.target.value },
                             }))
                           }
-                          className="h-10 rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm text-white"
+                          className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900"
                         />
                         <input
                           type="number"
@@ -522,7 +522,7 @@ export default function WorkoutSession({
                               [set.id]: { ...prev[set.id], reps: event.target.value },
                             }))
                           }
-                          className="h-10 rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm text-white"
+                          className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900"
                         />
                         <input
                           type="number"
@@ -538,7 +538,7 @@ export default function WorkoutSession({
                               [set.id]: { ...prev[set.id], rpe: event.target.value },
                             }))
                           }
-                          className="h-10 rounded-lg border border-zinc-700 bg-zinc-900 px-2 text-center text-sm text-white placeholder:text-zinc-600"
+                          className="h-10 rounded-lg border border-zinc-200 bg-white px-2 text-center text-sm text-zinc-900 placeholder:text-zinc-300"
                         />
                         <button
                           type="button"
@@ -592,9 +592,9 @@ export default function WorkoutSession({
                       const isConfirming = confirmingLocalId === p.localId
                       const setNum = exerciseSets.length + index + 1
                       return (
-                        <li key={p.localId} className="rounded-lg border border-amber-800/50 bg-amber-950/30 px-3 py-2">
+                        <li key={p.localId} className="rounded-lg border border-green-200 bg-green-50 px-3 py-2">
                           <div className="grid grid-cols-[22px_minmax(0,1fr)_minmax(0,1fr)_64px_36px] items-center gap-2">
-                            <span className="text-xs font-semibold text-amber-600/80">{setNum}</span>
+                            <span className="text-xs font-semibold text-green-700">{setNum}</span>
                             <input
                               type="number"
                               step="0.5"
@@ -606,7 +606,7 @@ export default function WorkoutSession({
                                   [p.localId]: { ...prev[p.localId], weight: e.target.value },
                                 }))
                               }
-                              className="h-10 rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm text-white placeholder:text-zinc-600"
+                              className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 placeholder:text-zinc-300"
                             />
                             <input
                               type="number"
@@ -619,7 +619,7 @@ export default function WorkoutSession({
                                   [p.localId]: { ...prev[p.localId], reps: e.target.value },
                                 }))
                               }
-                              className="h-10 rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm text-white placeholder:text-zinc-600"
+                              className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 placeholder:text-zinc-300"
                             />
                             <input
                               type="number"
@@ -635,7 +635,7 @@ export default function WorkoutSession({
                                   [p.localId]: { ...prev[p.localId], rpe: e.target.value },
                                 }))
                               }
-                              className="h-10 rounded-lg border border-zinc-700 bg-zinc-900 px-2 text-center text-sm text-white placeholder:text-zinc-600"
+                              className="h-10 rounded-lg border border-zinc-200 bg-white px-2 text-center text-sm text-zinc-900 placeholder:text-zinc-300"
                             />
                             <button
                               type="button"
@@ -643,7 +643,8 @@ export default function WorkoutSession({
                               disabled={isConfirming}
                               aria-label="Confirm set"
                               title="Log this set"
-                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500 text-zinc-950 hover:bg-amber-400 active:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-white hover:opacity-90 active:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+                              style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
                             >
                               {isConfirming ? (
                                 <span className="text-[10px]">…</span>
@@ -681,19 +682,20 @@ export default function WorkoutSession({
           <p className="text-sm text-zinc-400">No exercises yet. Add your first exercise below.</p>
         )}
 
-        <div className="sticky bottom-24 z-20 rounded-xl border border-zinc-700 bg-zinc-950/95 p-3 backdrop-blur">
+        <div className="sticky bottom-24 z-20 rounded-xl border border-zinc-100 bg-white/95 p-3 shadow-sm backdrop-blur">
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Add Exercise</p>
           <div className="mt-2 flex items-center gap-2">
             <input
               value={newExerciseName}
               onChange={(event) => setNewExerciseName(event.target.value)}
               placeholder="Example: Incline Bench"
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-green-700"
             />
             <button
               type="button"
               onClick={handleAddExercise}
-              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+              className="rounded-xl px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+              style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
             >
               Add
             </button>
@@ -704,7 +706,7 @@ export default function WorkoutSession({
                 key={preset}
                 type="button"
                 onClick={() => setNewExerciseName(preset)}
-                className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-300 hover:bg-zinc-800"
+                className="rounded-full border border-zinc-200 px-3 py-1 text-xs text-zinc-600 hover:bg-zinc-50"
               >
                 {preset}
               </button>
@@ -715,13 +717,13 @@ export default function WorkoutSession({
 
       <div className="mt-8">
         {message ? (
-          <div className="rounded-lg bg-zinc-800/70 px-4 py-3 text-sm text-zinc-200">{message}</div>
+          <div className="rounded-lg bg-zinc-100 px-4 py-3 text-sm text-zinc-700">{message}</div>
         ) : null}
       </div>
 
-      <div className="mt-6 border-t border-zinc-800 pt-4">
-        <p className="text-sm text-zinc-400">Workout total</p>
-        <p className="text-3xl font-semibold">{formattedVolume} lbs</p>
+      <div className="mt-6 border-t border-zinc-100 pt-4">
+        <p className="text-sm text-zinc-500">Workout total</p>
+        <p className="text-3xl font-semibold text-zinc-900">{formattedVolume} lbs</p>
         <p className="text-xs text-zinc-400">{totalSets} set{totalSets === 1 ? '' : 's'}</p>
 
         {workoutStatus === 'in_progress' ? (
@@ -731,8 +733,8 @@ export default function WorkoutSession({
                 type="button"
                 onClick={handleFinishWorkout}
                 disabled={isPending}
-                className="rounded-xl bg-white px-5 py-3 font-semibold text-black disabled:cursor-not-allowed disabled:opacity-60"
-              >
+                className="rounded-xl px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}>
                 {isPending ? 'Saving…' : 'Finish workout'}
               </button>
               {totalSets === 0 ? (
@@ -740,7 +742,7 @@ export default function WorkoutSession({
                   type="button"
                   onClick={handleCancelDraft}
                   disabled={isPending}
-                  className="rounded-xl border border-rose-800 bg-rose-950/40 px-4 py-3 text-sm font-semibold text-rose-200 hover:bg-rose-900/40 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isPending ? 'Canceling…' : 'Cancel draft'}
                 </button>
@@ -755,7 +757,7 @@ export default function WorkoutSession({
                 type="button"
                 onClick={handleDoneEditing}
                 disabled={isPending}
-                className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-800"
+                className="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50"
               >
                 {isPending ? 'Saving…' : 'Done Editing'}
               </button>
@@ -763,7 +765,7 @@ export default function WorkoutSession({
                 type="button"
                 onClick={handleGoHistory}
                 disabled={isPending}
-                className="rounded-xl bg-zinc-800 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700"
+                className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-100"
               >
                 {isPending ? 'Saving…' : 'History'}
               </button>

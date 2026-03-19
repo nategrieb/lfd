@@ -21,7 +21,7 @@ export default function BottomNav({ activeWorkoutId }: Props) {
     pathname.startsWith('/settings')
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-zinc-800 bg-zinc-950/95 backdrop-blur-sm">
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-zinc-100 bg-white/95 backdrop-blur-sm">
       <div className="mx-auto flex max-w-lg items-center justify-around px-2 py-2">
 
         {/* Feed */}
@@ -29,7 +29,7 @@ export default function BottomNav({ activeWorkoutId }: Props) {
           href="/"
           prefetch={false}
           className={`flex flex-col items-center gap-0.5 rounded-xl px-5 py-2 text-xs font-medium transition-colors ${
-            feedActive ? 'text-amber-400' : 'text-zinc-500 active:text-zinc-300'
+            feedActive ? 'text-green-700' : 'text-zinc-400 active:text-zinc-600'
           }`}
         >
           <HomeIcon className="h-6 w-6" filled={feedActive} />
@@ -41,15 +41,15 @@ export default function BottomNav({ activeWorkoutId }: Props) {
           href={recordHref}
           prefetch={false}
           className={`flex flex-col items-center gap-0.5 rounded-xl px-5 py-2 text-xs font-medium transition-colors ${
-            recordActive ? 'text-amber-400' : 'text-zinc-500 active:text-zinc-300'
+            recordActive ? 'text-green-700' : 'text-zinc-400 active:text-zinc-600'
           }`}
         >
           <div className="relative">
             <DumbbellIcon className="h-6 w-6" filled={recordActive} />
             {activeWorkoutId && (
               <span className="absolute -right-1 -top-1 flex h-3 w-3 items-center justify-center">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-75" />
-                <span className="relative h-2 w-2 rounded-full bg-amber-500" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-600 opacity-75" />
+                <span className="relative h-2 w-2 rounded-full bg-green-600" />
               </span>
             )}
           </div>
@@ -61,7 +61,7 @@ export default function BottomNav({ activeWorkoutId }: Props) {
           href="/people"
           prefetch={false}
           className={`flex flex-col items-center gap-0.5 rounded-xl px-5 py-2 text-xs font-medium transition-colors ${
-            peopleActive ? 'text-amber-400' : 'text-zinc-500 active:text-zinc-300'
+            peopleActive ? 'text-green-700' : 'text-zinc-400 active:text-zinc-600'
           }`}
         >
           <PeopleIcon className="h-6 w-6" filled={peopleActive} />
@@ -73,7 +73,7 @@ export default function BottomNav({ activeWorkoutId }: Props) {
           href="/history"
           prefetch={false}
           className={`flex flex-col items-center gap-0.5 rounded-xl px-5 py-2 text-xs font-medium transition-colors ${
-            youActive ? 'text-amber-400' : 'text-zinc-500 active:text-zinc-300'
+            youActive ? 'text-green-700' : 'text-zinc-400 active:text-zinc-600'
           }`}
         >
           <UserIcon className="h-6 w-6" filled={youActive} />
