@@ -117,9 +117,20 @@ async function _importStrongCSV(formData: FormData): Promise<ImportResult> {
   }
 
   // ── Group rows by (Date, Workout Name) ─────────────────────────────────
+  // Normalise the date to an ISO minute-precision string so that rows with
+  // different date formats for the same session (e.g. "3/15/2026 12:13:11 PM"
+  // vs "2026-03-15 12:13:11") are collapsed into one workout.
+  function normaliseDateKey(raw: string): string {
+    const d = new Date(raw)
+    if (isNaN(d.getTime())) return raw.trim() // keep raw as fallback
+    // Round to the nearest minute so trivial sub-second differences don't split workouts
+    d.setSeconds(0, 0)
+    return d.toISOString()
+  }
+
   const workoutMap = new Map<string, StrongRow[]>()
   for (const row of rows) {
-    const key = `${row.Date}|||${row['Workout Name']}`
+    const key = `${normaliseDateKey(row.Date)}|||${row['Workout Name']}`
     if (!workoutMap.has(key)) workoutMap.set(key, [])
     workoutMap.get(key)!.push(row)
   }
