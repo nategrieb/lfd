@@ -415,7 +415,6 @@ export default function VideoUpload({
         ref={fileInputRef}
         type="file"
         accept="video/*"
-        capture="environment"
         onChange={handleFileChange}
         className="sr-only"
         aria-label={`Upload clip for ${exerciseName} set`}
