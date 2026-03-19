@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { cancelWorkoutDraft, deleteSet, finishWorkout, updateSet, updateWorkoutName } from '../actions'
+import { addSet, cancelWorkoutDraft, deleteSet, finishWorkout, updateSet, updateWorkoutName } from '../actions'
 import AddSetForm from './AddSetForm'
 import VideoUpload from './VideoUpload'
 import { nameToSlug } from '@/lib/lifts'
@@ -43,6 +43,57 @@ type WorkoutSessionProps = {
   scheduledSets?: ScheduledSet[]
 }
 
+type PendingSet = {
+  localId: string
+  exerciseName: string
+  weight: string   // pre-filled but editable
+  reps: string
+  rpe: string
+}
+
+function buildInitialPendingSets(
+  scheduledSets: ScheduledSet[] | undefined,
+  initialSets: WorkoutSet[],
+): PendingSet[] {
+  if (!scheduledSets?.length) return []
+
+  // Count already-logged sets per exercise
+  const loggedCount: Record<string, number> = {}
+  for (const s of initialSets) {
+    const key = s.exercise_name.toLowerCase()
+    loggedCount[key] = (loggedCount[key] ?? 0) + 1
+  }
+
+  const skipRemaining: Record<string, number> = { ...loggedCount }
+  const result: PendingSet[] = []
+  const sorted = [...scheduledSets].sort((a, b) => a.sort_order - b.sort_order)
+
+  for (const ss of sorted) {
+    const key = ss.exercise_name.toLowerCase()
+    const skip = skipRemaining[key] ?? 0
+
+    if (skip >= ss.sets_count) {
+      skipRemaining[key] = skip - ss.sets_count
+      continue
+    }
+
+    const startFrom = skip
+    skipRemaining[key] = 0
+
+    for (let i = startFrom; i < ss.sets_count; i++) {
+      result.push({
+        localId: `${ss.id}-${i}`,
+        exerciseName: ss.exercise_name,
+        weight: ss.calculated_weight != null ? String(ss.calculated_weight) : '',
+        reps: ss.reps != null ? String(ss.reps) : '',
+        rpe: ss.target_rpe != null ? String(ss.target_rpe) : '',
+      })
+    }
+  }
+
+  return result
+}
+
 function exerciseDomId(name: string) {
   return `exercise-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
 }
@@ -59,12 +110,16 @@ export default function WorkoutSession({
   liftOneRepMaxes,
   scheduledSets,
 }: WorkoutSessionProps) {
-  // Build a map from canonical lowercase exercise name → scheduled set prescription
-  const scheduledSetMap = useMemo(() => {
+  // Build a map from canonical lowercase exercise name → all scheduled set groups (in order)
+  const scheduledSetGroupsMap = useMemo(() => {
     if (!scheduledSets?.length) return null
-    const map = new Map<string, ScheduledSet>()
-    for (const ss of scheduledSets) {
-      map.set(ss.exercise_name.toLowerCase(), ss)
+    const map = new Map<string, ScheduledSet[]>()
+    const sorted = [...scheduledSets].sort((a, b) => a.sort_order - b.sort_order)
+    for (const ss of sorted) {
+      const key = ss.exercise_name.toLowerCase()
+      const existing = map.get(key) ?? []
+      existing.push(ss)
+      map.set(key, existing)
     }
     return map
   }, [scheduledSets])
@@ -90,14 +145,30 @@ export default function WorkoutSession({
     const fromSets = Array.from(new Set(initialSets.map((set) => set.exercise_name).filter(Boolean)))
     // Prepend any scheduled exercises not yet logged (preserves program order)
     if (scheduledSets?.length) {
-      const programNames = scheduledSets
-        .sort((a, b) => a.sort_order - b.sort_order)
-        .map((ss) => ss.exercise_name)
+      const programNames = Array.from(new Set(
+        scheduledSets
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map((ss) => ss.exercise_name)
+      ))
       const extra = programNames.filter((n) => !fromSets.includes(n))
       return [...extra, ...fromSets.filter((n) => !extra.includes(n))]
     }
     return fromSets
   })
+
+  // Pending sets: pre-filled from program prescription, confirmed one-by-one by the user
+  const [pendingSets, setPendingSets] = useState<PendingSet[]>(() =>
+    buildInitialPendingSets(scheduledSets, initialSets)
+  )
+  const [pendingDrafts, setPendingDrafts] = useState<Record<string, { weight: string; reps: string; rpe: string }>>(() =>
+    Object.fromEntries(
+      buildInitialPendingSets(scheduledSets, initialSets).map((p) => [
+        p.localId,
+        { weight: p.weight, reps: p.reps, rpe: p.rpe },
+      ])
+    )
+  )
+  const [confirmingLocalId, setConfirmingLocalId] = useState<string | null>(null)
   const [newExerciseName, setNewExerciseName] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
@@ -170,6 +241,46 @@ export default function WorkoutSession({
       const element = document.getElementById(exerciseDomId(trimmed))
       element?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }, 0)
+  }
+
+  const handleConfirmPending = async (localId: string) => {
+    const pending = pendingSets.find((p) => p.localId === localId)
+    if (!pending) return
+    const draft = pendingDrafts[localId]
+    if (!draft) return
+
+    const weight = Number(draft.weight)
+    const reps = Number(draft.reps)
+    if (!draft.weight || !draft.reps || Number.isNaN(weight) || weight <= 0 || Number.isNaN(reps) || reps <= 0) {
+      setMessage('Enter weight and reps before confirming.')
+      setTimeout(() => setMessage(null), 2500)
+      return
+    }
+
+    setConfirmingLocalId(localId)
+    const formData = new FormData()
+    formData.set('workout_id', workoutId)
+    formData.set('exercise_name', pending.exerciseName)
+    formData.set('weight', draft.weight)
+    formData.set('reps', draft.reps)
+    if (draft.rpe) formData.set('rpe', draft.rpe)
+
+    const result = await addSet(formData)
+    setConfirmingLocalId(null)
+
+    if (!result.success || !result.set) {
+      setMessage(result.message ?? 'Failed to confirm set.')
+      setTimeout(() => setMessage(null), 2500)
+      return
+    }
+
+    handleSetAdded({ ...result.set, video_url: null })
+    setPendingSets((prev) => prev.filter((p) => p.localId !== localId))
+    setPendingDrafts((prev) => {
+      const next = { ...prev }
+      delete next[localId]
+      return next
+    })
   }
 
   const persistAllChanges = async () => {
@@ -308,34 +419,49 @@ export default function WorkoutSession({
             return (
             <div id={exerciseDomId(exerciseName)} key={exerciseName} className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
               {(() => {
-                const ss = scheduledSetMap?.get(exerciseName.toLowerCase())
-                if (!ss) return null
+                const groups = scheduledSetGroupsMap?.get(exerciseName.toLowerCase())
+                if (!groups?.length) return null
                 return (
-                  <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-amber-700/30 bg-amber-900/20 px-3 py-2">
-                    <span className="text-xs font-bold text-amber-400">Target</span>
-                    <span className="text-xs text-amber-200">
-                      {ss.sets_count}×{ss.reps ?? ss.reps_note}
-                    </span>
-                    {ss.calculated_weight != null ? (
-                      <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-black">
-                        {ss.calculated_weight} lbs
-                      </span>
-                    ) : ss.target_rpe ? (
-                      <span className="rounded-full border border-amber-500 px-2 py-0.5 text-xs font-semibold text-amber-300">
-                        RPE {ss.target_rpe}
-                      </span>
-                    ) : null}
-                    {ss.percentage && (
-                      <span className="text-xs text-zinc-500">@{Math.round(ss.percentage * 100)}%</span>
-                    )}
-                    {ss.tempo && (
-                      <span className="text-xs text-zinc-500" title={formatTempo(ss.tempo)}>
-                        {ss.tempo}
-                      </span>
-                    )}
-                    {ss.rest_seconds ? (
-                      <RestTimer seconds={ss.rest_seconds} label={formatRest(ss.rest_seconds)} />
-                    ) : null}
+                  <div className="mb-3 rounded-lg border border-amber-700/30 bg-amber-950/40 px-3 py-2.5">
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-amber-500/80">Target</p>
+                    <div className="space-y-2">
+                      {groups.map((ss, gi) => (
+                        <div key={gi}>
+                          {gi > 0 && (
+                            <div className="mb-2 flex items-center gap-2">
+                              <div className="h-px flex-1 bg-amber-800/40" />
+                              <span className="text-[10px] font-medium uppercase tracking-wider text-amber-700/70">then</span>
+                              <div className="h-px flex-1 bg-amber-800/40" />
+                            </div>
+                          )}
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span className="text-sm font-bold text-amber-200">
+                              {ss.sets_count}×{ss.reps ?? ss.reps_note}
+                            </span>
+                            {ss.calculated_weight != null ? (
+                              <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-black">
+                                {ss.calculated_weight} lbs
+                              </span>
+                            ) : ss.target_rpe ? (
+                              <span className="rounded-full border border-amber-500 px-2 py-0.5 text-xs font-semibold text-amber-300">
+                                RPE {ss.target_rpe}
+                              </span>
+                            ) : null}
+                            {ss.percentage && (
+                              <span className="text-xs text-zinc-500">@{Math.round(ss.percentage * 100)}%</span>
+                            )}
+                            {ss.tempo && (
+                              <span className="text-xs text-zinc-500" title={formatTempo(ss.tempo)}>
+                                {ss.tempo}
+                              </span>
+                            )}
+                            {ss.rest_seconds ? (
+                              <RestTimer seconds={ss.rest_seconds} label={formatRest(ss.rest_seconds)} />
+                            ) : null}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )
               })()}
@@ -364,7 +490,7 @@ export default function WorkoutSession({
                   {exerciseSets.map((set, index) => (
                     <li
                       key={set.id}
-                      className="rounded-xl border border-zinc-800 bg-zinc-950/40 px-3 py-2"
+                      className="rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2"
                     >
                       <div className="grid grid-cols-[22px_minmax(0,1fr)_minmax(0,1fr)_64px_36px] items-center gap-2">
                         <span className="text-xs font-medium text-zinc-400">{index + 1}</span>
@@ -446,16 +572,100 @@ export default function WorkoutSession({
                     </li>
                   ))}
                 </ul>
-              ) : (
+              ) : null}
+
+              {/* Pending sets — pre-filled from program, confirmed one by one */}
+              {(() => {
+                const myPending = pendingSets.filter(
+                  (p) => p.exerciseName.toLowerCase() === exerciseName.toLowerCase()
+                )
+                if (!myPending.length) return null
+                return (
+                  <ul className={`${exerciseSets.length > 0 ? 'mt-4 border-t border-zinc-800 pt-3' : 'mt-2'} space-y-2`}>
+                    {myPending.map((p, index) => {
+                      const draft = pendingDrafts[p.localId] ?? { weight: p.weight, reps: p.reps, rpe: p.rpe }
+                      const isConfirming = confirmingLocalId === p.localId
+                      const setNum = exerciseSets.length + index + 1
+                      return (
+                        <li key={p.localId} className="rounded-lg border border-amber-800/50 bg-amber-950/30 px-3 py-2">
+                          <div className="grid grid-cols-[22px_minmax(0,1fr)_minmax(0,1fr)_64px_36px] items-center gap-2">
+                            <span className="text-xs font-semibold text-amber-600/80">{setNum}</span>
+                            <input
+                              type="number"
+                              step="0.5"
+                              placeholder="lbs"
+                              value={draft.weight}
+                              onChange={(e) =>
+                                setPendingDrafts((prev) => ({
+                                  ...prev,
+                                  [p.localId]: { ...prev[p.localId], weight: e.target.value },
+                                }))
+                              }
+                              className="h-10 rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm text-white placeholder:text-zinc-600"
+                            />
+                            <input
+                              type="number"
+                              min="1"
+                              placeholder="reps"
+                              value={draft.reps}
+                              onChange={(e) =>
+                                setPendingDrafts((prev) => ({
+                                  ...prev,
+                                  [p.localId]: { ...prev[p.localId], reps: e.target.value },
+                                }))
+                              }
+                              className="h-10 rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm text-white placeholder:text-zinc-600"
+                            />
+                            <input
+                              type="number"
+                              step="0.5"
+                              min="1"
+                              max="10"
+                              placeholder="RPE"
+                              title="Rate of Perceived Exertion (1–10)"
+                              value={draft.rpe}
+                              onChange={(e) =>
+                                setPendingDrafts((prev) => ({
+                                  ...prev,
+                                  [p.localId]: { ...prev[p.localId], rpe: e.target.value },
+                                }))
+                              }
+                              className="h-10 rounded-lg border border-zinc-700 bg-zinc-900 px-2 text-center text-sm text-white placeholder:text-zinc-600"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleConfirmPending(p.localId)}
+                              disabled={isConfirming}
+                              aria-label="Confirm set"
+                              title="Log this set"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500 text-zinc-950 hover:bg-amber-400 active:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {isConfirming ? (
+                                <span className="text-[10px]">…</span>
+                              ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" className="h-4 w-4">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )
+              })()}
+
+              {exerciseSets.length === 0 && pendingSets.filter((p) => p.exerciseName.toLowerCase() === exerciseName.toLowerCase()).length === 0 ? (
                 <p className="mt-4 text-sm text-zinc-400">No sets yet for this exercise.</p>
-              )}
+              ) : null}
 
               <div className="mt-3">
                 <AddSetForm
                   workoutId={workoutId}
                   exerciseName={exerciseName}
-                  defaultWeight={latestSet?.weight ?? scheduledSetMap?.get(exerciseName.toLowerCase())?.calculated_weight ?? undefined}
-                  defaultReps={latestSet?.reps ?? scheduledSetMap?.get(exerciseName.toLowerCase())?.reps ?? undefined}
+                  defaultWeight={latestSet?.weight ?? undefined}
+                  defaultReps={latestSet?.reps ?? undefined}
                   onAdded={(set) => handleSetAdded({ ...set, video_url: null })}
                 />
               </div>

@@ -38,13 +38,17 @@ export default async function YouPage() {
   // Stats — computed from workouts already fetched, no extra queries
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-  const thisMonthCount = workouts.filter(w => new Date(w.created_at) >= startOfMonth).length
   const totalSets = workouts.reduce((acc, w) => acc + (w.sets?.length ?? 0), 0)
 
   // Activity items — algorithm picks best set per workout, then sort chronologically
   const activityItems = buildFeed(workouts, liftsMap).sort(
     (a, b) => new Date(b.workout.created_at).getTime() - new Date(a.workout.created_at).getTime(),
   )
+
+  // "This month" counts only workouts that actually had sets logged (matches activity list)
+  const thisMonthCount = activityItems.filter(
+    ({ workout: w }) => new Date(w.created_at) >= startOfMonth,
+  ).length
 
   // Planned workouts from active enrollments
   const { data: scheduledWorkouts } = await supabase

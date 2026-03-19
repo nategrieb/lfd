@@ -2,6 +2,7 @@ import { createServerSupabase } from '@/lib/supabase-server'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import StartWorkoutButton from './workout/StartWorkoutButton'
+import TodayWorkoutBanner from '@/components/TodayWorkoutBanner'
 import FeedCard from '@/components/FeedCard'
 import { buildFeed, type FeedWorkout } from '@/lib/feed'
 
@@ -21,6 +22,16 @@ export default async function DashboardPage() {
     .eq('status', 'in_progress')
     .order('created_at', { ascending: false })
     .limit(1)
+    .maybeSingle()
+
+  // Check for today's scheduled workout from an active program enrollment
+  const todayISO = new Date().toISOString().slice(0, 10)
+  const { data: todayScheduled } = await supabase
+    .from('scheduled_workouts')
+    .select('id, template_workouts(name)')
+    .eq('user_id', user.id)
+    .eq('scheduled_date', todayISO)
+    .in('status', ['planned', 'started'])
     .maybeSingle()
 
   // 1RM map for scoring — uses the lifts table (generic, any exercise)
@@ -73,6 +84,11 @@ export default async function DashboardPage() {
           >
             Continue Workout →
           </Link>
+        ) : todayScheduled ? (
+          <TodayWorkoutBanner
+            scheduledId={todayScheduled.id}
+            workoutName={(todayScheduled.template_workouts as any)?.name ?? 'Program Workout'}
+          />
         ) : (
           <StartWorkoutButton />
         )}

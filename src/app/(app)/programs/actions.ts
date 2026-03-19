@@ -42,13 +42,29 @@ export async function enrollInProgram(formData: FormData) {
   const endDate   = new Date(startDate)
   endDate.setDate(endDate.getDate() + tmpl.duration_weeks * 7)
 
-  // Cancel any existing active enrollment for this template
-  await supabase
+  // Delete any existing enrollments for this template (active or cancelled).
+  // This removes stale rows so re-enrolling with the same start date never
+  // hits the unique constraint on (user_id, template_id, start_date).
+  const { data: existingEnrollments } = await supabase
     .from('program_enrollments')
-    .update({ status: 'cancelled' })
+    .select('id')
     .eq('user_id', user.id)
     .eq('template_id', templateId)
-    .eq('status', 'active')
+
+  if (existingEnrollments?.length) {
+    const ids = existingEnrollments.map(e => e.id)
+    // Delete scheduled_workouts (and their scheduled_sets via CASCADE) first
+    await supabase
+      .from('scheduled_workouts')
+      .delete()
+      .in('enrollment_id', ids)
+      .eq('user_id', user.id)
+    await supabase
+      .from('program_enrollments')
+      .delete()
+      .in('id', ids)
+      .eq('user_id', user.id)
+  }
 
   const { data: enrollment, error: enrollErr } = await supabase
     .from('program_enrollments')
@@ -129,28 +145,26 @@ export async function enrollInProgram(formData: FormData) {
 }
 
 /**
- * Cancel an active enrollment and delete all future planned scheduled_workouts.
+ * Unenroll from a program: delete all future planned workouts and the enrollment row itself.
  */
 export async function unenrollFromProgram(enrollmentId: string, templateId: string) {
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user?.id) return { success: false, message: 'Not authenticated.' }
 
-  const todayISO = new Date().toISOString().slice(0, 10)
-
-  // Delete future planned workouts so they don't clutter the calendar
+  // Delete all planned scheduled_workouts (and their sets via CASCADE if configured,
+  // otherwise the FK on scheduled_sets will handle it)
   await supabase
     .from('scheduled_workouts')
     .delete()
     .eq('enrollment_id', enrollmentId)
     .eq('user_id', user.id)
     .eq('status', 'planned')
-    .gt('scheduled_date', todayISO)
 
-  // Mark enrollment as cancelled
+  // Delete the enrollment row entirely so re-enrolling never hits the unique constraint
   const { error } = await supabase
     .from('program_enrollments')
-    .update({ status: 'cancelled' })
+    .delete()
     .eq('id', enrollmentId)
     .eq('user_id', user.id)
 
