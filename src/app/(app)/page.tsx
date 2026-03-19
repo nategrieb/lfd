@@ -115,39 +115,4 @@ export default async function DashboardPage() {
   )
 }
 
-// ── Dead code removed below — previously the Recent section ──────────────────
-// The old recentWorkouts query and JSX list have been replaced by the feed.
-// Keeping this comment as a breadcrumb; delete freely.
-//
-// To restore: git diff HEAD~1 src/app/(app)/page.tsx
-                      </p>
-                      <p className="text-xs text-zinc-500">
-                        {new Date(w.created_at).toLocaleDateString(undefined, {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                      </p>
-                    </div>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      className="h-4 w-4 text-zinc-600"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        </section>
-      )}
-    </div>
-  )
-}
+

@@ -11,7 +11,7 @@ type Props = {
 }
 
 export default function FeedCard({ item, displayName, userInitial }: Props) {
-  const { workout, highlightSet, pctOneRepMax, extraBadges } = item
+  const { workout, highlightSet, videoSet, pctOneRepMax, extraBadges } = item
   const videoRef = useRef<HTMLVideoElement>(null)
   const [playing, setPlaying] = useState(false)
 
@@ -21,9 +21,10 @@ export default function FeedCard({ item, displayName, userInitial }: Props) {
     day: 'numeric',
   })
 
-  const workoutTitle = workout.name?.trim() || highlightSet.exercise_name
+  const summaryHref = `/workout/${workout.id}/summary`
 
-  const togglePlay = () => {
+  const togglePlay = (e: React.MouseEvent) => {
+    e.preventDefault() // don't bubble to any parent link
     if (!videoRef.current) return
     if (playing) {
       videoRef.current.pause()
@@ -37,8 +38,8 @@ export default function FeedCard({ item, displayName, userInitial }: Props) {
   return (
     <article className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
 
-      {/* ── Card header ──────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 px-4 py-3">
+      {/* ── Card header — tapping navigates to workout summary ───────── */}
+      <Link href={summaryHref} className="flex items-center gap-3 px-4 py-3 hover:bg-zinc-800/40 transition-colors">
         {/* Avatar */}
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-black">
           {userInitial}
@@ -50,17 +51,14 @@ export default function FeedCard({ item, displayName, userInitial }: Props) {
           <p className="text-xs text-zinc-500">{dateStr}</p>
         </div>
 
-        {/* Workout link */}
-        <Link
-          href={`/workout/${workout.id}/summary`}
-          className="shrink-0 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
-        >
-          {workoutTitle}
-        </Link>
-      </div>
+        {/* Chevron */}
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0 text-zinc-600" aria-hidden="true">
+          <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+        </svg>
+      </Link>
 
-      {/* ── Video (if present) ───────────────────────────────────────── */}
-      {highlightSet.video_url && (
+      {/* ── Video — plays in-place; does NOT navigate ─────────────────── */}
+      {videoSet && (
         <button
           type="button"
           onClick={togglePlay}
@@ -70,7 +68,7 @@ export default function FeedCard({ item, displayName, userInitial }: Props) {
         >
           <video
             ref={videoRef}
-            src={highlightSet.video_url}
+            src={videoSet.video_url!}
             className="h-full w-full object-contain"
             preload="metadata"
             loop
@@ -97,11 +95,11 @@ export default function FeedCard({ item, displayName, userInitial }: Props) {
         </button>
       )}
 
-      {/* ── Lift info + badges ───────────────────────────────────────── */}
-      <div className="px-4 py-3">
+      {/* ── Lift info + badges — tapping navigates to workout summary ── */}
+      <Link href={summaryHref} className="block px-4 py-3 hover:bg-zinc-800/40 transition-colors">
         <div className="flex items-start justify-between gap-3">
 
-          {/* Primary lift data */}
+          {/* Primary lift data — driven by highest-effort set */}
           <div className="min-w-0">
             <p className="truncate text-base font-extrabold uppercase tracking-wide text-white">
               {highlightSet.exercise_name}
@@ -123,7 +121,7 @@ export default function FeedCard({ item, displayName, userInitial }: Props) {
               </span>
             ))}
 
-            {/* RPE — filled amber pill: the prescribed effort */}
+            {/* RPE */}
             {highlightSet.rpe !== null && (
               <span className="rounded-full bg-zinc-700 px-2.5 py-0.5 text-xs font-semibold text-white">
                 RPE {highlightSet.rpe}
@@ -138,7 +136,7 @@ export default function FeedCard({ item, displayName, userInitial }: Props) {
             )}
           </div>
         </div>
-      </div>
+      </Link>
     </article>
   )
 }

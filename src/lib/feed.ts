@@ -36,17 +36,25 @@ export type FeedWorkout = {
 
 export type FeedItem = {
   workout: FeedWorkout
-  /** The single set chosen to represent this workout. */
+  /**
+   * The highest-scored set for this workout — drives the displayed exercise
+   * name, weight, reps, RPE, and %1RM text regardless of whether it has a video.
+   */
   highlightSet: FeedSet
+  /**
+   * The highest-scored set that has a video_url, or null if no set in this
+   * workout has been filmed. Kept separate so the algorithm can surface the
+   * best filmed effort even when a different (unfilmed) set scored higher.
+   */
+  videoSet: FeedSet | null
   /** Final score after recency decay — used for sort order only. */
   score: number
   /** Rounded percentage of 1RM for the highlight set, or null if no 1RM on file. */
   pctOneRepMax: number | null
   /**
    * Extensible badge list rendered on the card.
-   * Populated by the algorithm for standard signals; callers can append
-   * additional labels (e.g. 'King Of Lift', 'Location PR') after calling
-   * buildFeed().
+   * Callers can append labels (e.g. 'King Of Lift', 'Location PR') after
+   * calling buildFeed().
    */
   extraBadges: string[]
 }
@@ -127,13 +135,25 @@ export function buildFeed(
     let bestFinal = -Infinity
     let highlightPct: number | null = null
 
+    // Track the best-scored SET THAT HAS VIDEO independently.
+    // This means a max-effort unfilmed set still drives the text while the
+    // best available video is always shown when one exists.
+    let videoSet: FeedSet | null = null
+    let bestVideoFinal = -Infinity
+
     for (const set of workout.sets) {
       const { rawScore, pct } = scoreSet(set, liftsMap)
       const final = rawScore * decay
+
       if (final > bestFinal) {
         bestFinal = final
         highlightSet = set
         highlightPct = pct
+      }
+
+      if (set.video_url && final > bestVideoFinal) {
+        bestVideoFinal = final
+        videoSet = set
       }
     }
 
@@ -145,6 +165,7 @@ export function buildFeed(
     items.push({
       workout,
       highlightSet,
+      videoSet,
       score: bestFinal,
       pctOneRepMax: highlightPct != null ? Math.round(highlightPct * 100) : null,
       extraBadges,
