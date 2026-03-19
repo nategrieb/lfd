@@ -11,9 +11,10 @@ type Props = {
   displayName: string
   userInitial: string
   username?: string | null
+  avatarUrl?: string | null
 }
 
-export default function FeedCard({ item, displayName, userInitial, username }: Props) {
+export default function FeedCard({ item, displayName, userInitial, username, avatarUrl }: Props) {
   const { workout, highlightSet, videoSet, pctOneRepMax, extraBadges } = item
   const router = useRouter()
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -55,13 +56,19 @@ export default function FeedCard({ item, displayName, userInitial, username }: P
         {profileHref ? (
           <Link
             href={profileHref}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-black hover:opacity-80 transition-opacity"
+            className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-amber-500 text-sm font-bold text-black hover:opacity-80 transition-opacity"
           >
-            {userInitial}
+            {avatarUrl
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+              : userInitial}
           </Link>
         ) : (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-black">
-            {userInitial}
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-amber-500 text-sm font-bold text-black">
+            {avatarUrl
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+              : userInitial}
           </div>
         )}
 

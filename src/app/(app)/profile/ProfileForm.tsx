@@ -1,18 +1,21 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 import { updateProfile } from './actions'
+import { createClient } from '@/lib/supabase'
 
 export type ProfileFormProps = {
+  userId: string
   username: string
   displayName: string
+  avatarUrl?: string | null
   squat: number
   bench: number
   deadlift: number
   preferredUnit: 'lb' | 'kg'
 }
 
-export default function ProfileForm({ username, displayName, squat, bench, deadlift, preferredUnit }: ProfileFormProps) {
+export default function ProfileForm({ userId, username, displayName, avatarUrl, squat, bench, deadlift, preferredUnit }: ProfileFormProps) {
   const [formState, setFormState] = useState({
     username,
     display_name: displayName,
@@ -23,10 +26,20 @@ export default function ProfileForm({ username, displayName, squat, bench, deadl
   })
   const [message, setMessage] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = event.target
     setFormState((current) => ({ ...current, [name]: value }))
+  }
+
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setPendingFile(file)
+    setPreviewUrl(URL.createObjectURL(file))
   }
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -36,6 +49,22 @@ export default function ProfileForm({ username, displayName, squat, bench, deadl
     const formData = new FormData(event.currentTarget)
 
     startTransition(async () => {
+      if (pendingFile) {
+        const supabase = createClient()
+        const ext = pendingFile.name.split('.').pop() ?? 'jpg'
+        const path = `${userId}/avatar.${ext}`
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(path, pendingFile, { upsert: true, contentType: pendingFile.type })
+        if (uploadError) {
+          setMessage('Photo upload failed: ' + uploadError.message)
+          return
+        }
+        const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
+        // Append cache-buster so the browser fetches the new image
+        formData.set('avatar_url', `${urlData.publicUrl}?t=${Date.now()}`)
+      }
+
       const result = await updateProfile(formData)
       if (!result.success) {
         setMessage(result.message ?? 'Unable to save your profile.')
@@ -45,8 +74,43 @@ export default function ProfileForm({ username, displayName, squat, bench, deadl
     })
   }
 
+  const displaySrc = previewUrl ?? avatarUrl ?? null
+  const initial = (formState.display_name?.[0] || formState.username?.[0] || '?').toUpperCase()
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+
+      {/* ── Avatar ────────────────────────────────────────────── */}
+      <div className="flex flex-col items-center gap-2">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="group relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-amber-500 text-2xl font-bold text-black ring-2 ring-transparent transition hover:ring-amber-400 focus:outline-none focus:ring-amber-400"
+          aria-label="Change profile photo"
+        >
+          {displaySrc ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={displaySrc} alt="Profile photo" className="h-full w-full object-cover" />
+          ) : (
+            initial
+          )}
+          <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-white" aria-hidden="true">
+              <path d="M12 9a3.75 3.75 0 100 7.5A3.75 3.75 0 0012 9z" />
+              <path fillRule="evenodd" d="M9.344 3.071a49.52 49.52 0 015.312 0c.967.052 1.83.585 2.332 1.39l.821 1.317c.24.383.645.643 1.11.71.386.054.77.113 1.152.177 1.432.239 2.429 1.493 2.429 2.909V18a3 3 0 01-3 3h-15a3 3 0 01-3-3V9.574c0-1.416.997-2.67 2.429-2.909.382-.064.766-.123 1.151-.178a1.56 1.56 0 001.11-.71l.822-1.315a2.942 2.942 0 012.332-1.39zM6.75 12.75a5.25 5.25 0 1110.5 0 5.25 5.25 0 01-10.5 0z" clipRule="evenodd" />
+            </svg>
+          </span>
+        </button>
+        <p className="text-xs text-zinc-500">Tap to change photo</p>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={handleAvatarChange}
+          aria-label="Upload profile photo"
+        />
+      </div>
 
       {/* ── Identity ──────────────────────────────────────────── */}
       <div className="space-y-4">

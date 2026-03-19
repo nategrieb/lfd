@@ -51,6 +51,9 @@ export async function updateProfile(formData: FormData) {
   }
   if (rawUsername) upsertPayload.username = rawUsername
 
+  const rawAvatarUrl = formData.get('avatar_url')
+  if (rawAvatarUrl) upsertPayload.avatar_url = String(rawAvatarUrl).trim()
+
   const { error } = await supabase
     .from('profiles')
     .upsert(upsertPayload)

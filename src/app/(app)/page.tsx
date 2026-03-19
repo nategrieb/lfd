@@ -72,19 +72,20 @@ export default async function DashboardPage() {
   // Profiles for everyone appearing in the feed (drives avatar + display name per card)
   const { data: profilesData } = await supabase
     .from('profiles')
-    .select('id, username, display_name')
+    .select('id, username, display_name, avatar_url')
     .in('id', feedUserIds)
 
-  const profileMap: Record<string, { name: string; username: string | null }> = {}
+  const profileMap: Record<string, { name: string; username: string | null; avatarUrl: string | null }> = {}
   for (const p of profilesData ?? []) {
     profileMap[p.id] = {
       name: (p as any).display_name || p.username || '',
       username: p.username ?? null,
+      avatarUrl: (p as any).avatar_url ?? null,
     }
   }
   // Fallback for current user
   if (!profileMap[user.id]) {
-    profileMap[user.id] = { name: user.email?.split('@')[0] ?? 'You', username: null }
+    profileMap[user.id] = { name: user.email?.split('@')[0] ?? 'You', username: null, avatarUrl: null }
   }
 
   const currentUserInitial = (profileMap[user.id]?.name?.[0] ?? 'U').toUpperCase()
@@ -95,8 +96,11 @@ export default async function DashboardPage() {
       {/* ── Header ─────────────────────────────────────────────────── */}
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-3xl font-extrabold tracking-tight">LFD</h1>
-        <Link href="/profile" className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-black">
-          {currentUserInitial}
+        <Link href="/profile" className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-amber-500 text-sm font-bold text-black">
+          {profileMap[user.id]?.avatarUrl
+            // eslint-disable-next-line @next/next/no-img-element
+            ? <img src={profileMap[user.id].avatarUrl!} alt="Profile" className="h-full w-full object-cover" />
+            : currentUserInitial}
         </Link>
       </div>
 
@@ -147,6 +151,7 @@ export default async function DashboardPage() {
                     displayName={name}
                     userInitial={(name[0] ?? 'U').toUpperCase()}
                     username={prof?.username ?? null}
+                    avatarUrl={prof?.avatarUrl ?? null}
                   />
                 </li>
               )

@@ -16,7 +16,7 @@ export default async function ProfilePage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('username, display_name, squat_1rm, bench_1rm, deadlift_1rm, preferred_unit')
+    .select('username, display_name, squat_1rm, bench_1rm, deadlift_1rm, preferred_unit, avatar_url')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -33,8 +33,10 @@ export default async function ProfilePage() {
 
         <div className="mt-5">
           <ProfileForm
+            userId={user.id}
             username={profile?.username ?? ''}
             displayName={profile?.display_name ?? ''}
+            avatarUrl={(profile as any)?.avatar_url ?? null}
             squat={profile?.squat_1rm ?? 0}
             bench={profile?.bench_1rm ?? 0}
             deadlift={profile?.deadlift_1rm ?? 0}

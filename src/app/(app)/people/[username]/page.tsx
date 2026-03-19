@@ -19,7 +19,7 @@ export default async function UserProfilePage({ params }: Props) {
   // Look up the target user by username
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, username, display_name, squat_1rm, bench_1rm, deadlift_1rm, preferred_unit')
+    .select('id, username, display_name, squat_1rm, bench_1rm, deadlift_1rm, preferred_unit, avatar_url')
     .eq('username', username)
     .maybeSingle()
 
@@ -64,6 +64,7 @@ export default async function UserProfilePage({ params }: Props) {
 
   const displayName = (profile as any).display_name || profile.username || username
   const initial = (displayName[0] ?? '?').toUpperCase()
+  const avatarUrl: string | null = (profile as any).avatar_url ?? null
   const unit = (profile as any).preferred_unit ?? 'lb'
 
   // Big-three 1RMs — only show if set
@@ -90,8 +91,11 @@ export default async function UserProfilePage({ params }: Props) {
 
       {/* Header */}
       <div className="mb-6 flex items-center gap-4">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-amber-500 text-xl font-bold text-black">
-          {initial}
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-amber-500 text-xl font-bold text-black">
+          {avatarUrl
+            // eslint-disable-next-line @next/next/no-img-element
+            ? <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+            : initial}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-xl font-extrabold tracking-tight">{displayName}</p>
@@ -154,6 +158,7 @@ export default async function UserProfilePage({ params }: Props) {
                   displayName={displayName}
                   userInitial={initial}
                   username={profile.username}
+                  avatarUrl={avatarUrl}
                 />
               </li>
             ))}
