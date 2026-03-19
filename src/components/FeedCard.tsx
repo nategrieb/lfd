@@ -10,9 +10,10 @@ type Props = {
   item: FeedItem
   displayName: string
   userInitial: string
+  username?: string | null
 }
 
-export default function FeedCard({ item, displayName, userInitial }: Props) {
+export default function FeedCard({ item, displayName, userInitial, username }: Props) {
   const { workout, highlightSet, videoSet, pctOneRepMax, extraBadges } = item
   const router = useRouter()
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -25,6 +26,7 @@ export default function FeedCard({ item, displayName, userInitial }: Props) {
   })
 
   const summaryHref = `/workout/${workout.id}/summary`
+  const profileHref = username ? `/people/${username}` : null
 
   // Workout-level aggregate stats computed from all sets
   const sets = workout.sets ?? []
@@ -47,26 +49,35 @@ export default function FeedCard({ item, displayName, userInitial }: Props) {
   return (
     <article className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
 
-      {/* ── Card header — tapping navigates to workout summary ───────── */}
-      <Link href={summaryHref} className="flex items-center gap-3 px-4 py-3 hover:bg-zinc-800/40 transition-colors">
-        {/* Avatar */}
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-black">
-          {userInitial}
-        </div>
+      {/* ── Card header ──────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 px-4 py-3">
+        {/* Avatar — links to profile if username is known */}
+        {profileHref ? (
+          <Link
+            href={profileHref}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-black hover:opacity-80 transition-opacity"
+          >
+            {userInitial}
+          </Link>
+        ) : (
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-black">
+            {userInitial}
+          </div>
+        )}
 
-        {/* Name + date + optional workout title */}
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{displayName}</p>
-          <p className="text-xs text-zinc-500">
-            {dateStr}{workoutTitle ? <> · <span className="text-zinc-400">{workoutTitle}</span></> : null}
-          </p>
-        </div>
-
-        {/* Chevron */}
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0 text-zinc-600" aria-hidden="true">
-          <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
-        </svg>
-      </Link>
+        {/* Name + date — links to workout summary */}
+        <Link href={summaryHref} className="flex min-w-0 flex-1 items-center gap-2 hover:opacity-80 transition-opacity">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">{displayName}</p>
+            <p className="text-xs text-zinc-500">
+              {dateStr}{workoutTitle ? <> · <span className="text-zinc-400">{workoutTitle}</span></> : null}
+            </p>
+          </div>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0 text-zinc-600" aria-hidden="true">
+            <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+          </svg>
+        </Link>
+      </div>
 
       {/* ── Video — plays in-place; does NOT navigate ─────────────────── */}
       {videoSet && (

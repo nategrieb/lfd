@@ -153,6 +153,7 @@ export default async function UserProfilePage({ params }: Props) {
                   item={item}
                   displayName={displayName}
                   userInitial={initial}
+                  username={profile.username}
                 />
               </li>
             ))}

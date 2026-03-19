@@ -18,14 +18,15 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
 
   const { data: workout } = await supabase
     .from('workouts')
-    .select('id, name, created_at, status')
+    .select('id, name, created_at, status, user_id')
     .eq('id', workoutId)
-    .eq('user_id', user.id)
     .single()
 
   if (!workout) {
     redirect('/history')
   }
+
+  const isOwner = workout.user_id === user.id
 
   const { data: sets } = await supabase
     .from('sets')
@@ -75,27 +76,29 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
           <h1 className="text-2xl font-semibold mb-1">{workout.name?.trim() || 'Workout Summary'}</h1>
           <p className="text-sm text-zinc-400">{new Date(workout.created_at).toLocaleString()}</p>
         </div>
-        <Link
-          href={`/workout/${workout.id}`}
-          aria-label="Edit workout"
-          title="Edit workout"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-700 text-zinc-200 hover:bg-zinc-800"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            className="h-5 w-5"
+        {isOwner && (
+          <Link
+            href={`/workout/${workout.id}`}
+            aria-label="Edit workout"
+            title="Edit workout"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-700 text-zinc-200 hover:bg-zinc-800"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M16.862 3.487a2.1 2.1 0 112.97 2.97L9.26 17.03a3 3 0 01-1.265.75l-3.19.91.91-3.19a3 3 0 01.75-1.266L16.862 3.487z"
-            />
-          </svg>
-        </Link>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              className="h-5 w-5"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M16.862 3.487a2.1 2.1 0 112.97 2.97L9.26 17.03a3 3 0 01-1.265.75l-3.19.91.91-3.19a3 3 0 01.75-1.266L16.862 3.487z"
+              />
+            </svg>
+          </Link>
+        )}
       </div>
 
       {totalVolume > 0 && (
@@ -109,22 +112,26 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
 
       <div className="mt-8 flex gap-3">
         <Link
-          href="/history"
+          href={isOwner ? '/history' : '/'}
           className="flex-1 rounded-xl border border-zinc-700 py-3 text-center text-sm font-semibold text-zinc-200 transition active:bg-zinc-800"
         >
-          History
+          {isOwner ? 'History' : 'Feed'}
         </Link>
-        <Link
-          href="/workout"
-          className="flex-1 rounded-xl bg-amber-500 py-3 text-center text-sm font-semibold text-black transition hover:bg-amber-400"
-        >
-          New Workout
-        </Link>
+        {isOwner && (
+          <Link
+            href="/workout"
+            className="flex-1 rounded-xl bg-amber-500 py-3 text-center text-sm font-semibold text-black transition hover:bg-amber-400"
+          >
+            New Workout
+          </Link>
+        )}
       </div>
 
-      <div className="mt-4">
-        <DeleteWorkoutButton workoutId={workout.id} />
-      </div>
+      {isOwner && (
+        <div className="mt-4">
+          <DeleteWorkoutButton workoutId={workout.id} />
+        </div>
+      )}
     </div>
   )
 }

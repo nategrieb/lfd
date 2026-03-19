@@ -75,16 +75,19 @@ export default async function DashboardPage() {
     .select('id, username, display_name')
     .in('id', feedUserIds)
 
-  const usernameMap: Record<string, string> = {}
+  const profileMap: Record<string, { name: string; username: string | null }> = {}
   for (const p of profilesData ?? []) {
-    usernameMap[p.id] = (p as any).display_name || p.username || ''
+    profileMap[p.id] = {
+      name: (p as any).display_name || p.username || '',
+      username: p.username ?? null,
+    }
   }
-  // Fallback for current user in case profile has no username yet
-  if (!usernameMap[user.id]) {
-    usernameMap[user.id] = user.email?.split('@')[0] ?? 'You'
+  // Fallback for current user
+  if (!profileMap[user.id]) {
+    profileMap[user.id] = { name: user.email?.split('@')[0] ?? 'You', username: null }
   }
 
-  const currentUserInitial = (usernameMap[user.id]?.[0] ?? 'U').toUpperCase()
+  const currentUserInitial = (profileMap[user.id]?.name?.[0] ?? 'U').toUpperCase()
 
   return (
     <div className="mx-auto max-w-lg px-5 py-8">
@@ -135,13 +138,15 @@ export default async function DashboardPage() {
         ) : (
           <ul className="space-y-4">
             {feedItems.map((item) => {
-              const name = usernameMap[item.workout.user_id] ?? item.workout.user_id.slice(0, 8)
+              const prof = profileMap[item.workout.user_id]
+              const name = prof?.name || item.workout.user_id.slice(0, 8)
               return (
                 <li key={item.workout.id}>
                   <FeedCard
                     item={item}
                     displayName={name}
                     userInitial={(name[0] ?? 'U').toUpperCase()}
+                    username={prof?.username ?? null}
                   />
                 </li>
               )
