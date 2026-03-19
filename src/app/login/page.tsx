@@ -6,7 +6,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md rounded-2xl border border-zinc-100 bg-white p-10 shadow-sm">
         <div className="mb-8 text-center">
           <div
-            className="mx-auto mb-3 flex h-10 w-20 items-center justify-center text-sm font-black tracking-widest text-white"
+            className="mx-auto mb-3 flex h-10 w-10 items-center justify-center text-xs font-black tracking-widest text-white"
             style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
           >
             LFD

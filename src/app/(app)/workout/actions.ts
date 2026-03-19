@@ -360,6 +360,29 @@ export async function saveSetVideoUrl({
   return { success: true }
 }
 
+export async function deleteSetVideoUrl(
+  setId: string,
+): Promise<{ success: boolean; message?: string }> {
+  if (!setId) return { success: false, message: 'Missing set id.' }
+
+  const supabase = await createServerSupabase()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user?.id) return { success: false, message: 'Not authenticated.' }
+
+  const { error } = await supabase
+    .from('sets')
+    .update({ video_url: null })
+    .eq('id', setId)
+    .eq('user_id', user.id) // ownership check
+
+  if (error) return { success: false, message: error.message }
+
+  return { success: true }
+}
+
 export async function finishWorkout(formData: FormData): Promise<void> {
   const workoutId = String(formData.get('workout_id'))
 

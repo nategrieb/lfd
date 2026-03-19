@@ -25,6 +25,7 @@ function BrandMark({ size = 26 }: { size?: number }) {
 function VideoSlide({ url, label, isActive }: { url: string; label: string; isActive: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [playing, setPlaying] = useState(false)
+  const [aspectRatio, setAspectRatio] = useState('4/5')
 
   useEffect(() => {
     if (!isActive && videoRef.current && !videoRef.current.paused) {
@@ -50,31 +51,30 @@ function VideoSlide({ url, label, isActive }: { url: string; label: string; isAc
       type="button"
       onClick={toggle}
       aria-label={playing ? 'Pause video' : 'Play video'}
-      className="relative block w-full bg-black"
-      style={{ aspectRatio: '9/16', maxHeight: 480 }}
+      className="relative block w-full overflow-hidden"
+      style={{ aspectRatio }}
     >
       <video
         ref={videoRef}
         src={url}
-        className="h-full w-full object-contain"
+        className="h-full w-full object-cover"
         preload="metadata"
         loop
         playsInline
-        onLoadedMetadata={() => {
-          if (videoRef.current) videoRef.current.currentTime = 0.001
+        onLoadedMetadata={(e) => {
+          const v = e.currentTarget
+          v.currentTime = 0.001
+          if (v.videoWidth && v.videoHeight) {
+            setAspectRatio(`${v.videoWidth}/${v.videoHeight}`)
+          }
         }}
         onEnded={() => setPlaying(false)}
       />
 
-      {/* Brand mark — always visible top-right */}
-      <div className="absolute right-3 top-3 pointer-events-none">
-        <BrandMark />
-      </div>
-
       {/* Paused state: label + play button */}
       {!playing && (
         <div className="absolute inset-0 flex flex-col pointer-events-none">
-          <p className="m-3 mr-14 self-start rounded bg-black/55 px-2.5 py-1 text-[11px] font-semibold leading-none text-white backdrop-blur-sm">
+          <p className="m-3 self-start rounded bg-black/50 px-2.5 py-1 text-[11px] font-semibold leading-none text-white backdrop-blur-sm">
             {label}
           </p>
           <div className="flex flex-1 items-center justify-center">

@@ -25,7 +25,7 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
 import { useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import { saveSetVideoUrl } from '../actions'
+import { saveSetVideoUrl, deleteSetVideoUrl } from '../actions'
 
 // @ffmpeg/core single-thread build — no SharedArrayBuffer / COOP/COEP needed.
 const CDN = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd'
@@ -56,7 +56,8 @@ function getVideoDimensions(file: File): Promise<{ width: number; height: number
   })
 }
 
-const GOLD = '#E8B84B'
+const GREEN_DARK = '#166534'
+const GREEN_MID  = '#16a34a'
 const FONT = 'system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif'
 
 /**
@@ -82,25 +83,22 @@ function renderOverlayPng(
     if (!ctx) { reject(new Error('Canvas unavailable')); return }
 
     // ── LFD brand badge (top-right) ────────────────────────────────────
-    // Solid gold rectangle with dark text — unmistakable channel-bug style.
-    ctx.font = `900 28px ${FONT}`
-    const BADGE_PAD_X = 16
-    const BADGE_PAD_Y = 9
-    const lfdMetrics = ctx.measureText('LFD')
-    const badgeW = lfdMetrics.width + BADGE_PAD_X * 2
-    const badgeH = 28 + BADGE_PAD_Y * 2
-    const badgeX = W - badgeW - 20
+    // Solid square green gradient badge — matches app brand mark.
+    const BADGE_SIZE = 56
+    const badgeX = W - BADGE_SIZE - 20
     const badgeY = 20
 
-    ctx.fillStyle = GOLD
-    ctx.beginPath()
-    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 5)
-    ctx.fill()
+    const badgeGrad = ctx.createLinearGradient(badgeX, badgeY, badgeX + BADGE_SIZE, badgeY + BADGE_SIZE)
+    badgeGrad.addColorStop(0, GREEN_DARK)
+    badgeGrad.addColorStop(1, GREEN_MID)
+    ctx.fillStyle = badgeGrad
+    ctx.fillRect(badgeX, badgeY, BADGE_SIZE, BADGE_SIZE)
 
-    ctx.fillStyle = '#0A0A0A'
+    ctx.font = `900 16px ${FONT}`
+    ctx.fillStyle = '#FFFFFF'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText('LFD', badgeX + badgeW / 2, badgeY + badgeH / 2)
+    ctx.fillText('LFD', badgeX + BADGE_SIZE / 2, badgeY + BADGE_SIZE / 2)
 
     // ── Bottom info strip ───────────────────────────────────────────────
     const STRIP_H = 120
@@ -109,8 +107,8 @@ function renderOverlayPng(
     ctx.fillStyle = 'rgba(0,0,0,0.85)'
     ctx.fillRect(0, stripY, W, STRIP_H)
 
-    // Gold accent bar at top edge of strip — visual thread to the badge.
-    ctx.fillStyle = GOLD
+    // Green accent bar at top edge of strip — visual thread to the badge.
+    ctx.fillStyle = GREEN_MID
     ctx.fillRect(0, stripY, W, 4)
 
     // Exercise name — largest, white, left
@@ -120,9 +118,9 @@ function renderOverlayPng(
     ctx.textBaseline = 'alphabetic'
     ctx.fillText(data.exerciseName.toUpperCase(), 26, stripY + 66)
 
-    // Weight × reps — gold, left. Brand color on the key number.
+    // Weight × reps — green, left. Brand color on the key number.
     ctx.font = `500 28px ${FONT}`
-    ctx.fillStyle = GOLD
+    ctx.fillStyle = GREEN_MID
     ctx.textAlign = 'left'
     ctx.fillText(`${data.weight} lbs × ${data.reps} reps`, 26, stripY + 106)
 
@@ -157,18 +155,21 @@ function renderOverlayPng(
         const py = pillCenterY - PILL_H / 2
 
         if (stat.filled) {
-          ctx.fillStyle = GOLD
+          const pillGrad = ctx.createLinearGradient(px, py, px + pw, py + PILL_H)
+          pillGrad.addColorStop(0, GREEN_DARK)
+          pillGrad.addColorStop(1, GREEN_MID)
+          ctx.fillStyle = pillGrad
           ctx.beginPath()
           ctx.roundRect(px, py, pw, PILL_H, PILL_R)
           ctx.fill()
-          ctx.fillStyle = '#0A0A0A'
+          ctx.fillStyle = '#FFFFFF'
         } else {
-          ctx.strokeStyle = GOLD
+          ctx.strokeStyle = GREEN_MID
           ctx.lineWidth = 2
           ctx.beginPath()
           ctx.roundRect(px + 1, py + 1, pw - 2, PILL_H - 2, PILL_R)
           ctx.stroke()
-          ctx.fillStyle = GOLD
+          ctx.fillStyle = GREEN_MID
         }
 
         ctx.textAlign = 'center'
@@ -205,6 +206,7 @@ type Status =
   | { type: 'processing'; progress: number }
   | { type: 'uploading' }
   | { type: 'done'; url: string }
+  | { type: 'deleting' }
   | { type: 'error'; message: string }
 
 export default function VideoUpload({
@@ -343,36 +345,89 @@ export default function VideoUpload({
     e.target.value = '' // Reset so the same file can be re-selected if needed
   }
 
+  // The hidden file input is always rendered so fileInputRef is always valid,
+  // even when the "Replace" button in the done state triggers it.
+  const fileInput = (
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept="video/*"
+      onChange={handleFileChange}
+      className="sr-only"
+      aria-label={`Upload clip for ${exerciseName} set`}
+    />
+  )
+
   // ── done ──────────────────────────────────────────────────────────────────
   if (status.type === 'done') {
+    const handleDelete = async () => {
+      if (!confirm('Remove this clip? You can upload a new one after.')) return
+      setStatus({ type: 'deleting' })
+      const result = await deleteSetVideoUrl(setId)
+      if (result.success) {
+        setStatus({ type: 'idle' })
+      } else {
+        setStatus({ type: 'error', message: result.message ?? 'Delete failed.' })
+      }
+    }
+
     return (
-      <a
-        href={status.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-1 flex w-fit items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
-      >
-        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
-          <path d="M8 5v14l11-7z" />
-        </svg>
-        View clip
-      </a>
+      <>
+        {fileInput}
+        <div className="mt-1 flex items-center gap-3">
+          <a
+            href={status.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-xs text-green-700 hover:text-green-600"
+          >
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            View clip
+          </a>
+          <span className="text-zinc-300">·</span>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="text-xs text-zinc-500 hover:text-zinc-700"
+          >
+            Replace
+          </button>
+          <span className="text-zinc-300">·</span>
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="text-xs text-rose-400 hover:text-rose-500"
+          >
+            Delete
+          </button>
+        </div>
+      </>
     )
+  }
+
+  // ── deleting ──────────────────────────────────────────────────────────────
+  if (status.type === 'deleting') {
+    return <span className="mt-1 text-xs text-zinc-400">Removing clip…</span>
   }
 
   // ── error ─────────────────────────────────────────────────────────────────
   if (status.type === 'error') {
     return (
-      <div className="mt-1 space-y-1">
-        <p className="text-xs text-rose-400">{status.message}</p>
-        <button
-          type="button"
-          onClick={() => setStatus({ type: 'idle' })}
-          className="text-xs text-zinc-500 underline hover:text-zinc-300"
-        >
-          Tap to retry
-        </button>
-      </div>
+      <>
+        {fileInput}
+        <div className="mt-1 space-y-1">
+          <p className="text-xs text-rose-400">{status.message}</p>
+          <button
+            type="button"
+            onClick={() => setStatus({ type: 'idle' })}
+            className="text-xs text-zinc-500 underline hover:text-zinc-300"
+          >
+            Tap to retry
+          </button>
+        </div>
+      </>
     )
   }
 
@@ -393,14 +448,14 @@ export default function VideoUpload({
 
     return (
       <div className="mt-1 flex items-center gap-2">
-        <div className="h-1 w-20 overflow-hidden rounded-full bg-zinc-800">
+        <div className="h-1 w-20 overflow-hidden rounded-full bg-zinc-200">
           {pct !== null ? (
             <div
-              className="h-full rounded-full bg-blue-500 transition-all duration-200"
+              className="h-full rounded-full bg-green-700 transition-all duration-200"
               style={{ width: `${pct}%` }}
             />
           ) : (
-            <div className="h-full w-1/2 animate-pulse rounded-full bg-indigo-500" />
+            <div className="h-full w-1/2 animate-pulse rounded-full bg-green-600" />
           )}
         </div>
         <span className="text-xs text-zinc-500">{label}</span>
@@ -411,18 +466,11 @@ export default function VideoUpload({
   // ── idle ──────────────────────────────────────────────────────────────────
   return (
     <>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="video/*"
-        onChange={handleFileChange}
-        className="sr-only"
-        aria-label={`Upload clip for ${exerciseName} set`}
-      />
+      {fileInput}
       <button
         type="button"
         onClick={() => fileInputRef.current?.click()}
-        className="mt-1 flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300"
+        className="mt-1 flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-700"
       >
         <svg
           viewBox="0 0 24 24"
