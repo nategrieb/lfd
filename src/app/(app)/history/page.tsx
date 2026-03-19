@@ -82,7 +82,14 @@ export default async function YouPage() {
     workouts.flatMap(w => w.sets.map(s => canonicalName(s.exercise_name)))
   ).size
 
-  const displayName = user.email?.split('@')[0] ?? 'You'
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('display_name, avatar_url')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  const displayName = (profileData as any)?.display_name || user.email?.split('@')[0] || 'You'
+  const avatarUrl: string | null = (profileData as any)?.avatar_url ?? null
   const userInitial = (displayName[0] ?? 'U').toUpperCase()
 
   return (
@@ -90,8 +97,11 @@ export default async function YouPage() {
 
       {/* ── Header ───────────────────────────────────────────────────── */}
       <div className="mb-6 flex items-center gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-500 text-base font-bold text-black">
-          {userInitial}
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-amber-500 text-base font-bold text-black">
+          {avatarUrl
+            // eslint-disable-next-line @next/next/no-img-element
+            ? <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+            : userInitial}
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-semibold">{displayName}</p>
