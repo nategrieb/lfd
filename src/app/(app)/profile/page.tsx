@@ -16,9 +16,9 @@ export default async function ProfilePage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('username, squat_1rm, bench_1rm, deadlift_1rm, preferred_unit')
+    .select('username, display_name, squat_1rm, bench_1rm, deadlift_1rm, preferred_unit')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
   return (
     <div className="mx-auto max-w-lg px-5 py-8">
@@ -28,11 +28,13 @@ export default async function ProfilePage() {
       </header>
 
       <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6">
-        <h2 className="text-lg font-semibold">Lift Stats</h2>
-        <p className="mt-1 text-xs text-zinc-400">Update your 1RM and preferred units.</p>
+        <h2 className="text-lg font-semibold">Profile</h2>
+        <p className="mt-1 text-xs text-zinc-400">Set your name so friends can find you, and update your 1RMs.</p>
 
         <div className="mt-5">
           <ProfileForm
+            username={profile?.username ?? ''}
+            displayName={profile?.display_name ?? ''}
             squat={profile?.squat_1rm ?? 0}
             bench={profile?.bench_1rm ?? 0}
             deadlift={profile?.deadlift_1rm ?? 0}

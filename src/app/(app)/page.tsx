@@ -45,15 +45,23 @@ export default async function DashboardPage() {
     if (lift.one_rep_max) liftsMap[lift.name.toLowerCase()] = lift.one_rep_max
   }
 
-  // Feed source: completed workouts from the last 365 days with all set data.
-  // Future: swap `.eq('user_id', user.id)` for `.in('user_id', [userId, ...friendIds])`
+  // Who the current user follows — expands the feed beyond their own workouts
+  const { data: followsData } = await supabase
+    .from('follows')
+    .select('following_id')
+    .eq('follower_id', user.id)
+
+  const followedIds = (followsData ?? []).map((f) => f.following_id)
+  const feedUserIds = [user.id, ...followedIds]
+
+  // Feed source: completed workouts from self + followed users, last 365 days
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() - 365)
 
   const { data: rawWorkouts } = await supabase
     .from('workouts')
     .select('id, name, created_at, user_id, sets(id, exercise_name, weight, reps, rpe, video_url)')
-    .eq('user_id', user.id)
+    .in('user_id', feedUserIds)
     .eq('status', 'completed')
     .gte('created_at', cutoff.toISOString())
     .order('created_at', { ascending: false })
@@ -61,8 +69,22 @@ export default async function DashboardPage() {
 
   const feedItems = buildFeed((rawWorkouts ?? []) as FeedWorkout[], liftsMap)
 
-  const displayName = user.email?.split('@')[0] ?? 'You'
-  const userInitial = (displayName[0] ?? 'U').toUpperCase()
+  // Profiles for everyone appearing in the feed (drives avatar + display name per card)
+  const { data: profilesData } = await supabase
+    .from('profiles')
+    .select('id, username, display_name')
+    .in('id', feedUserIds)
+
+  const usernameMap: Record<string, string> = {}
+  for (const p of profilesData ?? []) {
+    usernameMap[p.id] = (p as any).display_name || p.username || ''
+  }
+  // Fallback for current user in case profile has no username yet
+  if (!usernameMap[user.id]) {
+    usernameMap[user.id] = user.email?.split('@')[0] ?? 'You'
+  }
+
+  const currentUserInitial = (usernameMap[user.id]?.[0] ?? 'U').toUpperCase()
 
   return (
     <div className="mx-auto max-w-lg px-5 py-8">
@@ -71,7 +93,7 @@ export default async function DashboardPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-3xl font-extrabold tracking-tight">LFD</h1>
         <Link href="/profile" className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-black">
-          {userInitial}
+          {currentUserInitial}
         </Link>
       </div>
 
@@ -112,15 +134,18 @@ export default async function DashboardPage() {
           </div>
         ) : (
           <ul className="space-y-4">
-            {feedItems.map((item) => (
-              <li key={item.workout.id}>
-                <FeedCard
-                  item={item}
-                  displayName={displayName}
-                  userInitial={userInitial}
-                />
-              </li>
-            ))}
+            {feedItems.map((item) => {
+              const name = usernameMap[item.workout.user_id] ?? item.workout.user_id.slice(0, 8)
+              return (
+                <li key={item.workout.id}>
+                  <FeedCard
+                    item={item}
+                    displayName={name}
+                    userInitial={(name[0] ?? 'U').toUpperCase()}
+                  />
+                </li>
+              )
+            })}
           </ul>
         )}
       </section>

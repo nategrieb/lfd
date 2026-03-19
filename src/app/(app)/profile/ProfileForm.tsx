@@ -4,14 +4,18 @@ import { useState, useTransition } from 'react'
 import { updateProfile } from './actions'
 
 export type ProfileFormProps = {
+  username: string
+  displayName: string
   squat: number
   bench: number
   deadlift: number
   preferredUnit: 'lb' | 'kg'
 }
 
-export default function ProfileForm({ squat, bench, deadlift, preferredUnit }: ProfileFormProps) {
+export default function ProfileForm({ username, displayName, squat, bench, deadlift, preferredUnit }: ProfileFormProps) {
   const [formState, setFormState] = useState({
+    username,
+    display_name: displayName,
     squat: String(squat),
     bench: String(bench),
     deadlift: String(deadlift),
@@ -43,6 +47,42 @@ export default function ProfileForm({ squat, bench, deadlift, preferredUnit }: P
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+
+      {/* ── Identity ──────────────────────────────────────────── */}
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-zinc-200">Username</label>
+          <p className="mt-0.5 text-xs text-zinc-500">How people find and follow you · 3–30 chars, lowercase letters, numbers, underscores</p>
+          <div className="relative mt-1">
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-zinc-500 select-none">@</span>
+            <input
+              name="username"
+              type="text"
+              value={formState.username}
+              onChange={handleChange}
+              placeholder="your_handle"
+              autoComplete="username"
+              className="w-full rounded-xl border border-zinc-800 bg-zinc-950/70 py-3 pl-7 pr-4 text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-zinc-200">Display name</label>
+          <p className="mt-0.5 text-xs text-zinc-500">Your real name or nickname shown on the feed</p>
+          <input
+            name="display_name"
+            type="text"
+            value={formState.display_name}
+            onChange={handleChange}
+            placeholder="Alex Johnson"
+            autoComplete="name"
+            className="mt-1 w-full rounded-xl border border-zinc-800 bg-zinc-950/70 px-4 py-3 text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+        </div>
+      </div>
+
+      {/* ── Lift Stats ────────────────────────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="block text-sm font-medium text-zinc-200">Squat 1RM</label>
