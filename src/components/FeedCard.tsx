@@ -23,6 +23,12 @@ export default function FeedCard({ item, displayName, userInitial }: Props) {
 
   const summaryHref = `/workout/${workout.id}/summary`
 
+  // Workout-level aggregate stats computed from all sets
+  const sets = workout.sets ?? []
+  const exerciseCount = new Set(sets.map((s) => s.exercise_name)).size
+  const totalVolume = sets.reduce((sum, s) => sum + s.weight * s.reps, 0)
+  const workoutTitle = workout.name?.trim() || null
+
   const togglePlay = (e: React.MouseEvent) => {
     e.preventDefault() // don't bubble to any parent link
     if (!videoRef.current) return
@@ -45,10 +51,12 @@ export default function FeedCard({ item, displayName, userInitial }: Props) {
           {userInitial}
         </div>
 
-        {/* Name + date */}
+        {/* Name + date + optional workout title */}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{displayName}</p>
-          <p className="text-xs text-zinc-500">{dateStr}</p>
+          <p className="text-xs text-zinc-500">
+            {dateStr}{workoutTitle ? <> · <span className="text-zinc-400">{workoutTitle}</span></> : null}
+          </p>
         </div>
 
         {/* Chevron */}
@@ -101,6 +109,9 @@ export default function FeedCard({ item, displayName, userInitial }: Props) {
 
           {/* Primary lift data — driven by highest-effort set */}
           <div className="min-w-0">
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-amber-500">
+              Top Lift
+            </p>
             <p className="truncate text-base font-extrabold uppercase tracking-wide text-white">
               {highlightSet.exercise_name}
             </p>
@@ -136,6 +147,13 @@ export default function FeedCard({ item, displayName, userInitial }: Props) {
             )}
           </div>
         </div>
+
+        {/* Workout aggregate summary */}
+        <p className="mt-2.5 text-xs text-zinc-500">
+          {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
+          {' · '}{sets.length} {sets.length === 1 ? 'set' : 'sets'}
+          {' · '}{totalVolume.toLocaleString()} lbs total
+        </p>
       </Link>
     </article>
   )
