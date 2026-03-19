@@ -66,6 +66,18 @@ export async function importStrongCSV(
   _prevState: ImportResult,
   formData: FormData,
 ): Promise<ImportResult> {
+  try {
+    return await _importStrongCSV(formData)
+  } catch (err) {
+    console.error('[importStrongCSV]', err)
+    return {
+      success: false,
+      message: err instanceof Error ? err.message : 'An unexpected error occurred.',
+    }
+  }
+}
+
+async function _importStrongCSV(formData: FormData): Promise<ImportResult> {
   const supabase = await createServerSupabase()
   const {
     data: { user },
@@ -113,11 +125,24 @@ export async function importStrongCSV(
   }
 
   // ── Fetch existing Strong imports to detect duplicates ──────────────────
-  const { data: existingWorkouts } = await supabase
+  // If the `source` column doesn't exist yet the query returns an error;
+  // fall back to an empty set so imports still proceed.
+  const { data: existingWorkouts, error: existingError } = await supabase
     .from('workouts')
     .select('name, created_at')
     .eq('user_id', user.id)
     .eq('source', 'strong')
+
+  if (existingError && existingError.message.includes('source')) {
+    return {
+      success: false,
+      message:
+        'The database is missing required columns (source, duration_seconds). ' +
+        'Please run the latest migration in your Supabase SQL Editor:\n\n' +
+        'ALTER TABLE public.workouts ADD COLUMN IF NOT EXISTS source text;\n' +
+        'ALTER TABLE public.workouts ADD COLUMN IF NOT EXISTS duration_seconds integer;',
+    }
+  }
 
   const existingSet = new Set(
     (existingWorkouts ?? []).map(

@@ -38,15 +38,6 @@ export default async function IntegrationsPage() {
           <StrongImporter />
         </div>
       </section>
-
-      {/* Migration notice */}
-      <p className="mt-4 text-center text-xs text-zinc-600">
-        First-time setup? Run the SQL migration in{' '}
-        <code className="rounded bg-zinc-800 px-1 py-0.5 font-mono text-zinc-400">
-          supabase/migrations/20260319000000_strong_import.sql
-        </code>{' '}
-        before importing.
-      </p>
     </div>
   )
 }
