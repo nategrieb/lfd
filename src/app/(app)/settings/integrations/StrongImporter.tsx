@@ -8,7 +8,25 @@ const initialState: ImportResult = { success: false, message: '' }
 export default function StrongImporter() {
   const [state, formAction, isPending] = useActionState(importStrongCSV, initialState)
   const [filename, setFilename] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  function applyFile(file: File) {
+    if (!file.name.endsWith('.csv') && file.type !== 'text/csv') return
+    setFilename(file.name)
+    // Inject the file into the hidden input via DataTransfer so the form
+    // submission picks it up correctly.
+    const dt = new DataTransfer()
+    dt.items.add(file)
+    if (inputRef.current) inputRef.current.files = dt.files
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) applyFile(file)
+  }
 
   return (
     <form action={formAction} className="space-y-4">
@@ -16,10 +34,18 @@ export default function StrongImporter() {
       <div
         role="button"
         tabIndex={0}
-        aria-label="Select CSV file"
-        className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-zinc-700 bg-zinc-900/40 px-6 py-8 text-center transition hover:border-amber-500/60 hover:bg-zinc-900/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+        aria-label="Select or drop CSV file"
+        className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-8 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
+          isDragging
+            ? 'border-amber-500 bg-amber-500/10'
+            : 'border-zinc-700 bg-zinc-900/40 hover:border-amber-500/60 hover:bg-zinc-900/70'
+        }`}
         onClick={() => inputRef.current?.click()}
         onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && inputRef.current?.click()}
+        onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
+        onDragEnter={e => { e.preventDefault(); setIsDragging(true) }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={handleDrop}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -40,8 +66,8 @@ export default function StrongImporter() {
           <p className="text-sm font-medium text-amber-400 break-all">{filename}</p>
         ) : (
           <>
-            <p className="text-sm font-medium text-zinc-300">Tap to select your Strong export</p>
-            <p className="mt-1 text-xs text-zinc-500">CSV files only · no size limit</p>
+            <p className="text-sm font-medium text-zinc-300">Drop your Strong export here</p>
+            <p className="mt-1 text-xs text-zinc-500">or tap to browse · CSV only</p>
           </>
         )}
 
@@ -54,7 +80,7 @@ export default function StrongImporter() {
           className="hidden"
           onChange={e => {
             const f = e.target.files?.[0]
-            setFilename(f?.name ?? null)
+            if (f) applyFile(f)
           }}
         />
       </div>
