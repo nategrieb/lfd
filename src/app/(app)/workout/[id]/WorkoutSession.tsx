@@ -2,9 +2,27 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { cancelWorkoutDraft, deleteSet, finishWorkout, updateSet, updateWorkoutName } from '../actions'
 import AddSetForm from './AddSetForm'
 import VideoUpload from './VideoUpload'
+import { nameToSlug } from '@/lib/lifts'
+import { formatTempo, formatRest } from '@/lib/programs'
+import RestTimer from './RestTimer'
+
+type ScheduledSet = {
+  id: string
+  sort_order: number
+  exercise_name: string
+  sets_count: number
+  reps: number | null
+  reps_note: string | null
+  calculated_weight: number | null   // pre-calculated lbs; null = RPE-based (user fills in)
+  percentage: number | null
+  target_rpe: number | null
+  tempo: string | null
+  rest_seconds: number | null
+}
 
 type WorkoutSet = {
   id: string
@@ -22,6 +40,7 @@ type WorkoutSessionProps = {
   workoutStatus: 'in_progress' | 'completed'
   initialSets: WorkoutSet[]
   liftOneRepMaxes: Record<string, number>
+  scheduledSets?: ScheduledSet[]
 }
 
 function exerciseDomId(name: string) {
@@ -38,7 +57,17 @@ export default function WorkoutSession({
   workoutStatus,
   initialSets,
   liftOneRepMaxes,
+  scheduledSets,
 }: WorkoutSessionProps) {
+  // Build a map from canonical lowercase exercise name → scheduled set prescription
+  const scheduledSetMap = useMemo(() => {
+    if (!scheduledSets?.length) return null
+    const map = new Map<string, ScheduledSet>()
+    for (const ss of scheduledSets) {
+      map.set(ss.exercise_name.toLowerCase(), ss)
+    }
+    return map
+  }, [scheduledSets])
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [workoutName, setWorkoutName] = useState(initialWorkoutName)
@@ -57,9 +86,18 @@ export default function WorkoutSession({
         ])
       )
   )
-  const [exerciseOrder, setExerciseOrder] = useState<string[]>(() =>
-    Array.from(new Set(initialSets.map((set) => set.exercise_name).filter(Boolean)))
-  )
+  const [exerciseOrder, setExerciseOrder] = useState<string[]>(() => {
+    const fromSets = Array.from(new Set(initialSets.map((set) => set.exercise_name).filter(Boolean)))
+    // Prepend any scheduled exercises not yet logged (preserves program order)
+    if (scheduledSets?.length) {
+      const programNames = scheduledSets
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((ss) => ss.exercise_name)
+      const extra = programNames.filter((n) => !fromSets.includes(n))
+      return [...extra, ...fromSets.filter((n) => !extra.includes(n))]
+    }
+    return fromSets
+  })
   const [newExerciseName, setNewExerciseName] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
@@ -269,9 +307,47 @@ export default function WorkoutSession({
             const latestSet = exerciseSets.length ? exerciseSets[exerciseSets.length - 1] : null
             return (
             <div id={exerciseDomId(exerciseName)} key={exerciseName} className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+              {(() => {
+                const ss = scheduledSetMap?.get(exerciseName.toLowerCase())
+                if (!ss) return null
+                return (
+                  <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-amber-700/30 bg-amber-900/20 px-3 py-2">
+                    <span className="text-xs font-bold text-amber-400">Target</span>
+                    <span className="text-xs text-amber-200">
+                      {ss.sets_count}×{ss.reps ?? ss.reps_note}
+                    </span>
+                    {ss.calculated_weight != null ? (
+                      <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-black">
+                        {ss.calculated_weight} lbs
+                      </span>
+                    ) : ss.target_rpe ? (
+                      <span className="rounded-full border border-amber-500 px-2 py-0.5 text-xs font-semibold text-amber-300">
+                        RPE {ss.target_rpe}
+                      </span>
+                    ) : null}
+                    {ss.percentage && (
+                      <span className="text-xs text-zinc-500">@{Math.round(ss.percentage * 100)}%</span>
+                    )}
+                    {ss.tempo && (
+                      <span className="text-xs text-zinc-500" title={formatTempo(ss.tempo)}>
+                        {ss.tempo}
+                      </span>
+                    )}
+                    {ss.rest_seconds ? (
+                      <RestTimer seconds={ss.rest_seconds} label={formatRest(ss.rest_seconds)} />
+                    ) : null}
+                  </div>
+                )
+              })()}
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-white">{exerciseName}</p>
+                  <Link
+                    href={`/lifts/${nameToSlug(exerciseName)}`}
+                    className="text-sm font-semibold text-white hover:text-amber-400 transition-colors"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {exerciseName}
+                  </Link>
                   <p className="text-xs text-zinc-400">
                     {exerciseSets.length} set{exerciseSets.length === 1 ? '' : 's'}
                   </p>
@@ -378,8 +454,8 @@ export default function WorkoutSession({
                 <AddSetForm
                   workoutId={workoutId}
                   exerciseName={exerciseName}
-                  defaultWeight={latestSet?.weight}
-                  defaultReps={latestSet?.reps}
+                  defaultWeight={latestSet?.weight ?? scheduledSetMap?.get(exerciseName.toLowerCase())?.calculated_weight ?? undefined}
+                  defaultReps={latestSet?.reps ?? scheduledSetMap?.get(exerciseName.toLowerCase())?.reps ?? undefined}
                   onAdded={(set) => handleSetAdded({ ...set, video_url: null })}
                 />
               </div>

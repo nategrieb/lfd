@@ -1,6 +1,7 @@
 'use server'
 
 import { createServerSupabase } from '@/lib/supabase-server'
+import { recalculateFutureWorkouts } from '@/lib/programs'
 
 export async function signOut() {
   const supabase = await createServerSupabase()
@@ -48,6 +49,13 @@ export async function updateProfile(formData: FormData) {
   if (error) {
     return { success: false, message: error.message }
   }
+
+  // Recalculate pre-planned workout weights for any active program enrollment
+  await Promise.all([
+    squat   > 0 ? recalculateFutureWorkouts(userId, 'squat',     squat,    supabase) : null,
+    bench   > 0 ? recalculateFutureWorkouts(userId, 'bench',     bench,    supabase) : null,
+    deadlift > 0 ? recalculateFutureWorkouts(userId, 'deadlift', deadlift, supabase) : null,
+  ])
 
   return { success: true }
 }

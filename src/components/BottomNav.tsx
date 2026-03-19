@@ -13,7 +13,11 @@ export default function BottomNav({ activeWorkoutId }: Props) {
   const recordHref = activeWorkoutId ? `/workout/${activeWorkoutId}` : '/workout'
   const recordActive = pathname.startsWith('/workout')
   const feedActive = pathname === '/'
-  const youActive = pathname === '/history' || pathname === '/profile'
+  const youActive =
+    pathname === '/history' ||
+    pathname === '/profile' ||
+    pathname.startsWith('/lifts') ||
+    pathname.startsWith('/settings')
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-zinc-800 bg-zinc-950/95 backdrop-blur-sm">

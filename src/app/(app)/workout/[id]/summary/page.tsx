@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import DeleteWorkoutButton from './DeleteWorkoutButton'
 import SummarySetsSection, { type SummarySet } from './SummarySetsSection'
+import { canonicalName } from '@/lib/lifts'
 
 export default async function WorkoutSummaryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: workoutId } = await params
@@ -46,17 +47,22 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
     .eq('id', user.id)
     .single()
 
-  // Compute maxes for PR exercises
-  const PR_EXERCISES = [
-    { name: 'Squat', prKey: 'squat_1rm' },
-    { name: 'Bench', prKey: 'bench_1rm' },
-    { name: 'Deadlift', prKey: 'deadlift_1rm' },
-  ]
+  // Compute maxes for PR exercises — match by canonical name so all squat
+  // variants ('Squat', 'Back Squat', 'Squat (Barbell)', etc.) are caught.
+  // prBadges is keyed by raw exercise_name so SummarySetsSection can look up directly.
+  const CANONICAL_PR_MAP: Record<string, string> = {
+    'Back Squat': 'squat_1rm',
+    'Bench Press': 'bench_1rm',
+    'Deadlift': 'deadlift_1rm',
+  }
   const prBadges: Record<string, boolean> = {}
-  for (const { name, prKey } of PR_EXERCISES) {
-    const max = Math.max(...((grouped[name] ?? []).map((s: any) => s.weight)), 0)
+  for (const [rawName, exerciseSets] of Object.entries(grouped)) {
+    const cn = canonicalName(rawName)
+    const prKey = CANONICAL_PR_MAP[cn]
+    if (!prKey) continue
+    const max = Math.max(...exerciseSets.map((s: any) => s.weight), 0)
     if (profile && max > ((profile as any)[prKey] ?? 0)) {
-      prBadges[name] = true
+      prBadges[rawName] = true
     }
   }
 

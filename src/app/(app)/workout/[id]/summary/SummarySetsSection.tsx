@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import VideoModal from '@/components/VideoModal'
+import { nameToSlug } from '@/lib/lifts'
 
 export type SummarySet = {
   id: string
@@ -26,7 +28,12 @@ export default function SummarySetsSection({ grouped, prBadges }: Props) {
       {Object.entries(grouped).map(([exercise, sets]) => (
         <div key={exercise} className="mb-6 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
           <div className="flex items-center gap-2 mb-3">
-            <h2 className="text-base font-bold">{exercise}</h2>
+            <Link
+              href={`/lifts/${nameToSlug(exercise)}`}
+              className="text-base font-bold hover:text-amber-400 transition-colors"
+            >
+              {exercise}
+            </Link>
             {prBadges[exercise] && (
               <span className="inline-flex items-center gap-1 rounded bg-amber-500/20 px-2 py-0.5 text-xs font-bold text-amber-300">
                 🔥 NEW PR

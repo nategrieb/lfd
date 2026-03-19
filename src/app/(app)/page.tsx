@@ -34,10 +34,10 @@ export default async function DashboardPage() {
     if (lift.one_rep_max) liftsMap[lift.name.toLowerCase()] = lift.one_rep_max
   }
 
-  // Feed source: completed workouts from the last 60 days with all set data.
+  // Feed source: completed workouts from the last 365 days with all set data.
   // Future: swap `.eq('user_id', user.id)` for `.in('user_id', [userId, ...friendIds])`
   const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - 60)
+  cutoff.setDate(cutoff.getDate() - 365)
 
   const { data: rawWorkouts } = await supabase
     .from('workouts')
@@ -46,7 +46,7 @@ export default async function DashboardPage() {
     .eq('status', 'completed')
     .gte('created_at', cutoff.toISOString())
     .order('created_at', { ascending: false })
-    .limit(30)
+    .limit(50)
 
   const feedItems = buildFeed((rawWorkouts ?? []) as FeedWorkout[], liftsMap)
 

@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase-server'
 import ProfileForm from './ProfileForm'
@@ -39,6 +40,20 @@ export default async function ProfilePage() {
           />
         </div>
       </section>
+
+      {/* Integrations */}
+      <Link
+        href="/settings/integrations"
+        className="mt-4 flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 transition hover:border-zinc-600"
+      >
+        <div>
+          <p className="font-semibold">Integrations</p>
+          <p className="mt-0.5 text-xs text-zinc-400">Import workouts from Strong and other apps</p>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5 shrink-0 text-zinc-500" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+        </svg>
+      </Link>
 
       <div className="mt-6 flex justify-end">
         <SignOutButton />

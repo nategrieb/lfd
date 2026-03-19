@@ -67,6 +67,41 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
     if (lift.one_rep_max) liftOneRepMaxes[lift.name.toLowerCase()] = lift.one_rep_max
   }
 
+  // Check if this workout is linked to a scheduled_workout from an active enrollment
+  // If so, fetch pre-calculated scheduled_sets for pre-populating the exercise guide.
+  const { data: scheduledWorkout } = await supabase
+    .from('scheduled_workouts')
+    .select('id, template_workout_id, enrollment_id')
+    .eq('workout_id', workoutId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  type ScheduledSet = {
+    id: string
+    sort_order: number
+    exercise_name: string
+    sets_count: number
+    reps: number | null
+    reps_note: string | null
+    calculated_weight: number | null
+    percentage: number | null
+    target_rpe: number | null
+    tempo: string | null
+    rest_seconds: number | null
+  }
+
+  let scheduledSets: ScheduledSet[] | undefined
+
+  if (scheduledWorkout?.id) {
+    const { data: ssRows } = await supabase
+      .from('scheduled_sets')
+      .select('id, sort_order, exercise_name, sets_count, reps, reps_note, calculated_weight, percentage, target_rpe, tempo, rest_seconds')
+      .eq('scheduled_workout_id', scheduledWorkout.id)
+      .order('sort_order')
+
+    if (ssRows?.length) scheduledSets = ssRows as ScheduledSet[]
+  }
+
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6 px-5 py-8">
       <header>
@@ -80,6 +115,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
         workoutStatus={workout.status}
         initialSets={setRows}
         liftOneRepMaxes={liftOneRepMaxes}
+        scheduledSets={scheduledSets}
       />
     </div>
   )

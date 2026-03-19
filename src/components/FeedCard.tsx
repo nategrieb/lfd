@@ -3,6 +3,8 @@
 import type { FeedItem } from '@/lib/feed'
 import Link from 'next/link'
 import { useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { nameToSlug } from '@/lib/lifts'
 
 type Props = {
   item: FeedItem
@@ -12,6 +14,7 @@ type Props = {
 
 export default function FeedCard({ item, displayName, userInitial }: Props) {
   const { workout, highlightSet, videoSet, pctOneRepMax, extraBadges } = item
+  const router = useRouter()
   const videoRef = useRef<HTMLVideoElement>(null)
   const [playing, setPlaying] = useState(false)
 
@@ -104,7 +107,13 @@ export default function FeedCard({ item, displayName, userInitial }: Props) {
       )}
 
       {/* ── Lift info + badges — tapping navigates to workout summary ── */}
-      <Link href={summaryHref} className="block px-4 py-3 hover:bg-zinc-800/40 transition-colors">
+      <div
+        role="link"
+        tabIndex={0}
+        onClick={() => router.push(summaryHref)}
+        onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && router.push(summaryHref)}
+        className="block cursor-pointer px-4 py-3 hover:bg-zinc-800/40 transition-colors"
+      >
         <div className="flex items-start justify-between gap-3">
 
           {/* Primary lift data — driven by highest-effort set */}
@@ -112,9 +121,13 @@ export default function FeedCard({ item, displayName, userInitial }: Props) {
             <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-amber-500">
               Top Lift
             </p>
-            <p className="truncate text-base font-extrabold uppercase tracking-wide text-white">
+            <Link
+              href={`/lifts/${nameToSlug(highlightSet.exercise_name)}`}
+              onClick={e => e.stopPropagation()}
+              className="truncate block text-base font-extrabold uppercase tracking-wide text-white hover:text-amber-400 transition-colors"
+            >
               {highlightSet.exercise_name}
-            </p>
+            </Link>
             <p className="mt-0.5 text-sm text-zinc-400">
               {highlightSet.weight} lbs × {highlightSet.reps} reps
             </p>
@@ -154,7 +167,7 @@ export default function FeedCard({ item, displayName, userInitial }: Props) {
           {' · '}{sets.length} {sets.length === 1 ? 'set' : 'sets'}
           {' · '}{totalVolume.toLocaleString()} lbs total
         </p>
-      </Link>
+      </div>
     </article>
   )
 }

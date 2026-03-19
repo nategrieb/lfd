@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createServerSupabase } from '@/lib/supabase-server'
+import { canonicalName } from '@/lib/lifts'
 
 export async function startWorkout() {
   const supabase = await createServerSupabase()
@@ -31,6 +32,55 @@ export async function startWorkout() {
   }
 
   return { success: true, id: data.id }
+}
+
+/**
+ * Start a workout from a scheduled (planned) workout.
+ * Creates a new workout row, links it to the scheduled_workout, and marks it as started.
+ */
+export async function startScheduledWorkout(scheduledWorkoutId: string) {
+  const supabase = await createServerSupabase()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user?.id) return { success: false as const, message: 'Not authenticated.' }
+
+  const { data: sw } = await supabase
+    .from('scheduled_workouts')
+    .select('id, template_workout_id, enrollment_id, status, workout_id, template_workouts(name)')
+    .eq('id', scheduledWorkoutId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!sw) return { success: false as const, message: 'Scheduled workout not found.' }
+  if (sw.status === 'completed') return { success: false as const, message: 'Already completed.' }
+
+  // If it was already started and has a linked workout, just redirect there
+  if (sw.status === 'started' && sw.workout_id) {
+    return { success: true as const, id: sw.workout_id }
+  }
+
+  const dayName = (sw.template_workouts as any)?.name ?? 'Program Workout'
+
+  const { data: workout, error: wErr } = await supabase
+    .from('workouts')
+    .insert({
+      user_id: user.id,
+      status: 'in_progress',
+      name: dayName,
+      scheduled_workout_id: scheduledWorkoutId,
+    })
+    .select('id')
+    .single()
+
+  if (wErr || !workout?.id) return { success: false as const, message: wErr?.message ?? 'Failed to start.' }
+
+  await supabase
+    .from('scheduled_workouts')
+    .update({ status: 'started', workout_id: workout.id })
+    .eq('id', scheduledWorkoutId)
+
+  return { success: true as const, id: workout.id }
 }
 
 export async function addSet(formData: FormData) {
@@ -339,15 +389,18 @@ export async function finishWorkout(formData: FormData): Promise<void> {
     .select('exercise_name, weight')
     .eq('workout_id', workoutId)
 
-  // Only check for PRs for these exercises
-  const PR_EXERCISES = ['Squat', 'Bench', 'Deadlift']
+  // Only check for PRs for these exercises (canonical name → profile column)
+  const CANONICAL_PR_MAP: Record<string, string> = {
+    'Back Squat': 'squat_1rm',
+    'Bench Press': 'bench_1rm',
+    'Deadlift': 'deadlift_1rm',
+  }
   const maxLifts: Record<string, number> = {}
-  for (const ex of PR_EXERCISES) {
-    const max = Math.max(
-      ...((sets ?? []).filter((s) => s.exercise_name === ex).map((s) => s.weight)),
-      0
-    )
-    if (max > 0) maxLifts[ex] = max
+  for (const set of (sets ?? []) as { exercise_name: string; weight: number }[]) {
+    const cn = canonicalName(set.exercise_name)
+    if (cn in CANONICAL_PR_MAP) {
+      if ((set.weight ?? 0) > (maxLifts[cn] ?? 0)) maxLifts[cn] = set.weight
+    }
   }
 
   // Fetch current profile PRs
@@ -360,11 +413,11 @@ export async function finishWorkout(formData: FormData): Promise<void> {
   // Prepare update if new PRs found
   const updates: Record<string, number> = {}
   if (profile) {
-    if (maxLifts['Squat'] && maxLifts['Squat'] > (profile.squat_1rm ?? 0)) {
-      updates['squat_1rm'] = maxLifts['Squat']
+    if (maxLifts['Back Squat'] && maxLifts['Back Squat'] > (profile.squat_1rm ?? 0)) {
+      updates['squat_1rm'] = maxLifts['Back Squat']
     }
-    if (maxLifts['Bench'] && maxLifts['Bench'] > (profile.bench_1rm ?? 0)) {
-      updates['bench_1rm'] = maxLifts['Bench']
+    if (maxLifts['Bench Press'] && maxLifts['Bench Press'] > (profile.bench_1rm ?? 0)) {
+      updates['bench_1rm'] = maxLifts['Bench Press']
     }
     if (maxLifts['Deadlift'] && maxLifts['Deadlift'] > (profile.deadlift_1rm ?? 0)) {
       updates['deadlift_1rm'] = maxLifts['Deadlift']

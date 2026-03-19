@@ -2,6 +2,9 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { buildFeed, type FeedWorkout } from '@/lib/feed'
+import { canonicalName } from '@/lib/lifts'
+import WorkoutCalendar from '@/components/WorkoutCalendar'
+import TodayWorkoutBanner from '@/components/TodayWorkoutBanner'
 
 export default async function YouPage() {
   const supabase = await createServerSupabase()
@@ -43,6 +46,38 @@ export default async function YouPage() {
     (a, b) => new Date(b.workout.created_at).getTime() - new Date(a.workout.created_at).getTime(),
   )
 
+  // Planned workouts from active enrollments
+  const { data: scheduledWorkouts } = await supabase
+    .from('scheduled_workouts')
+    .select('id, scheduled_date, template_workout_id')
+    .eq('user_id', user.id)
+    .eq('status', 'planned')
+
+  // Check for a scheduled workout today
+  const todayISO = new Date().toISOString().slice(0, 10)
+  const { data: todayScheduled } = await supabase
+    .from('scheduled_workouts')
+    .select('id, template_workouts(name)')
+    .eq('user_id', user.id)
+    .eq('scheduled_date', todayISO)
+    .in('status', ['planned', 'started'])
+    .maybeSingle()
+
+  // Calendar: completed workouts + planned scheduled workouts
+  const workoutDates = [
+    ...workouts.map(w => ({ date: w.created_at, id: w.id, status: 'completed' as const })),
+    ...(scheduledWorkouts ?? []).map(sw => ({
+      date: sw.scheduled_date,
+      id: sw.id,
+      status: 'planned' as const,
+    })),
+  ]
+
+  // Lifts: count unique canonical exercises across all workouts
+  const uniqueExerciseCount = new Set(
+    workouts.flatMap(w => w.sets.map(s => canonicalName(s.exercise_name)))
+  ).size
+
   const displayName = user.email?.split('@')[0] ?? 'You'
   const userInitial = (displayName[0] ?? 'U').toUpperCase()
 
@@ -58,6 +93,17 @@ export default async function YouPage() {
           <p className="font-semibold">{displayName}</p>
           <p className="truncate text-xs text-zinc-500">{user.email}</p>
         </div>
+        {/* Integrations */}
+        <Link
+          href="/settings/integrations"
+          aria-label="Integrations"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-700 text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+          </svg>
+        </Link>
+
         {/* Settings — links to profile for 1RMs, units, sign-out */}
         <Link
           href="/profile"
@@ -86,6 +132,48 @@ export default async function YouPage() {
           <p className="mt-1 text-xs text-zinc-400">Total sets</p>
         </div>
       </section>
+
+      {/* ── Calendar ──────────────────────────────────────────────────── */}
+      <section className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
+        <WorkoutCalendar workoutDates={workoutDates} />
+      </section>
+
+      {/* ── Today's scheduled workout ─────────────────────────────────── */}
+      {todayScheduled && (
+        <TodayWorkoutBanner scheduledId={todayScheduled.id} workoutName={(todayScheduled.template_workouts as any)?.name ?? 'Program Workout'} />
+      )}
+
+      {/* ── Programs ──────────────────────────────────────────────────── */}
+      <Link
+        href="/programs"
+        className="mb-3 flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900/60 px-5 py-4 transition hover:border-zinc-600"
+      >
+        <div>
+          <p className="font-semibold">Programs</p>
+          <p className="mt-0.5 text-xs text-zinc-400">Structured training cycles</p>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 shrink-0 text-zinc-500" aria-hidden="true">
+          <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+        </svg>
+      </Link>
+
+      {/* ── Lifts ─────────────────────────────────────────────────────── */}
+      <Link
+        href="/lifts"
+        className="mb-6 flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900/60 px-5 py-4 transition hover:border-zinc-600"
+      >
+        <div>
+          <p className="font-semibold">Lifts</p>
+          <p className="mt-0.5 text-xs text-zinc-400">
+            {uniqueExerciseCount > 0
+              ? `${uniqueExerciseCount} exercise${uniqueExerciseCount !== 1 ? 's' : ''} tracked`
+              : 'Track your lift progress'}
+          </p>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 shrink-0 text-zinc-500" aria-hidden="true">
+          <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+        </svg>
+      </Link>
 
       {/* ── Activity list ─────────────────────────────────────────────── */}
       <section>
