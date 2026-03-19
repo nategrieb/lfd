@@ -15,14 +15,10 @@ export async function startWorkout() {
   }
 
   const userId = user.id
-  const defaultName = `Workout ${new Date().toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  })}`
 
   const { data, error } = await supabase
     .from('workouts')
-    .insert({ user_id: userId, status: 'in_progress', name: defaultName })
+    .insert({ user_id: userId, status: 'in_progress' })
     .select('id')
     .single()
 
@@ -38,8 +34,6 @@ export async function addSet(formData: FormData) {
   const exerciseName = String(formData.get('exercise_name'))
   const weight = Number(formData.get('weight'))
   const reps = Number(formData.get('reps'))
-  const rpeRaw = formData.get('rpe')
-  const rpe = rpeRaw !== null && rpeRaw !== '' ? Number(rpeRaw) : null
 
   if (!workoutId || !exerciseName || Number.isNaN(weight) || Number.isNaN(reps)) {
     return { success: false, message: 'All fields are required and must be valid.' }
@@ -63,7 +57,7 @@ export async function addSet(formData: FormData) {
     .eq('workout_id', workoutId)
     .order('set_order', { ascending: false })
     .limit(1)
-    .maybeSingle()
+    .single()
 
   const nextOrder = (lastSet?.set_order ?? 0) + 1
 
@@ -75,7 +69,6 @@ export async function addSet(formData: FormData) {
       exercise_name: exerciseName,
       weight,
       reps,
-      rpe,
       set_order: nextOrder,
     })
     .select('*')
@@ -115,154 +108,7 @@ export async function deleteSet({ setId, workoutId }: { setId: string; workoutId
     return { success: false, message: error.message }
   }
 
-  // Best-effort: delete the associated video clip from Storage.
-  // The path is deterministic so no extra DB query is needed.
-  await supabase.storage
-    .from('workout-videos')
-    .remove([`${user.id}/${workoutId}/${setId}.mp4`])
-    .catch(() => {}) // non-fatal if the file didn't exist
-
   revalidatePath(`/workout/${workoutId}`)
-
-  return { success: true }
-}
-
-export async function updateWorkoutName({
-  workoutId,
-  name,
-}: {
-  workoutId: string
-  name: string
-}) {
-  const trimmedName = name.trim()
-
-  if (!workoutId || !trimmedName) {
-    return { success: false, message: 'Workout name is required.' }
-  }
-
-  const supabase = await createServerSupabase()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user?.id) {
-    return { success: false, message: 'Not authenticated.' }
-  }
-
-  const { error } = await supabase
-    .from('workouts')
-    .update({ name: trimmedName })
-    .eq('id', workoutId)
-    .eq('user_id', user.id)
-
-  if (error) {
-    return { success: false, message: error.message }
-  }
-
-  revalidatePath(`/workout/${workoutId}`)
-  revalidatePath(`/workout/${workoutId}/summary`)
-  revalidatePath('/history')
-  revalidatePath('/')
-
-  return { success: true, name: trimmedName }
-}
-
-export async function updateSet({
-  setId,
-  workoutId,
-  exerciseName,
-  weight,
-  reps,
-  rpe,
-}: {
-  setId: string
-  workoutId: string
-  exerciseName: string
-  weight: number
-  reps: number
-  rpe: number | null
-}) {
-  if (!setId || !workoutId || !exerciseName) {
-    return { success: false, message: 'Missing required fields.' }
-  }
-
-  if (Number.isNaN(weight) || Number.isNaN(reps) || weight <= 0 || reps <= 0) {
-    return { success: false, message: 'Weight and reps must be greater than 0.' }
-  }
-
-  const supabase = await createServerSupabase()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user?.id) {
-    return { success: false, message: 'Not authenticated.' }
-  }
-
-  const { data, error } = await supabase
-    .from('sets')
-    .update({
-      exercise_name: exerciseName.trim(),
-      weight,
-      reps,
-      rpe,
-    })
-    .eq('id', setId)
-    .eq('workout_id', workoutId)
-    .eq('user_id', user.id)
-    .select('id, exercise_name, weight, reps, rpe, created_at')
-    .single()
-
-  if (error || !data) {
-    return { success: false, message: error?.message ?? 'Unable to update set.' }
-  }
-
-  revalidatePath(`/workout/${workoutId}`)
-  revalidatePath(`/workout/${workoutId}/summary`)
-
-  return { success: true, set: data }
-}
-
-export async function cancelWorkoutDraft({ workoutId }: { workoutId: string }) {
-  if (!workoutId) {
-    return { success: false, message: 'Missing workout id.' }
-  }
-
-  const supabase = await createServerSupabase()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user?.id) {
-    return { success: false, message: 'Not authenticated.' }
-  }
-
-  const { data: existingSet } = await supabase
-    .from('sets')
-    .select('id')
-    .eq('workout_id', workoutId)
-    .eq('user_id', user.id)
-    .limit(1)
-    .maybeSingle()
-
-  if (existingSet?.id) {
-    return { success: false, message: 'Only empty drafts can be canceled.' }
-  }
-
-  const { error } = await supabase
-    .from('workouts')
-    .delete()
-    .eq('id', workoutId)
-    .eq('user_id', user.id)
-    .eq('status', 'in_progress')
-
-  if (error) {
-    return { success: false, message: error.message }
-  }
-
-  revalidatePath('/workout')
-  revalidatePath('/')
-  revalidatePath('/history')
 
   return { success: true }
 }

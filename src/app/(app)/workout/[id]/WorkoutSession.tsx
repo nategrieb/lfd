@@ -4,13 +4,16 @@ import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { cancelWorkoutDraft, deleteSet, finishWorkout, updateSet, updateWorkoutName } from '../actions'
 import AddSetForm from './AddSetForm'
+import VideoUpload from './VideoUpload'
 
 type WorkoutSet = {
   id: string
   exercise_name: string
   weight: number
   reps: number
+  rpe: number | null
   created_at: string
+  video_url: string | null
 }
 
 type WorkoutSessionProps = {
@@ -18,10 +21,15 @@ type WorkoutSessionProps = {
   initialWorkoutName: string
   workoutStatus: 'in_progress' | 'completed'
   initialSets: WorkoutSet[]
+  liftOneRepMaxes: Record<string, number>
 }
 
 function exerciseDomId(name: string) {
   return `exercise-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+}
+
+function getOneRepMax(exerciseName: string, maxes: Record<string, number>): number | null {
+  return maxes[exerciseName.toLowerCase()] ?? null
 }
 
 export default function WorkoutSession({
@@ -29,13 +37,14 @@ export default function WorkoutSession({
   initialWorkoutName,
   workoutStatus,
   initialSets,
+  liftOneRepMaxes,
 }: WorkoutSessionProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [workoutName, setWorkoutName] = useState(initialWorkoutName)
   const [draftWorkoutName, setDraftWorkoutName] = useState(initialWorkoutName)
   const [sets, setSets] = useState<WorkoutSet[]>(initialSets)
-  const [setDrafts, setSetDrafts] = useState<Record<string, { weight: string; reps: string }>>(
+  const [setDrafts, setSetDrafts] = useState<Record<string, { weight: string; reps: string; rpe: string }>>(
     () =>
       Object.fromEntries(
         initialSets.map((set) => [
@@ -43,6 +52,7 @@ export default function WorkoutSession({
           {
             weight: String(set.weight),
             reps: String(set.reps),
+            rpe: set.rpe !== null ? String(set.rpe) : '',
           },
         ])
       )
@@ -75,6 +85,7 @@ export default function WorkoutSession({
       [set.id]: {
         weight: String(set.weight),
         reps: String(set.reps),
+        rpe: set.rpe !== null ? String(set.rpe) : '',
       },
     }))
   }
@@ -148,9 +159,11 @@ export default function WorkoutSession({
       .filter((set) => {
         const draft = setDrafts[set.id]
         if (!draft) return false
+        const draftRpe = draft.rpe !== '' ? Number(draft.rpe) : null
         return (
           Number(draft.weight) !== set.weight ||
-          Number(draft.reps) !== set.reps
+          Number(draft.reps) !== set.reps ||
+          draftRpe !== set.rpe
         )
       })
       .map((set) => set.id)
@@ -164,6 +177,7 @@ export default function WorkoutSession({
           exerciseName: sets.find((set) => set.id === setId)?.exercise_name ?? '',
           weight: Number(draft.weight),
           reps: Number(draft.reps),
+          rpe: draft.rpe !== '' ? Number(draft.rpe) : null,
         })
 
         if (!result.success || !result.set) {
@@ -178,6 +192,7 @@ export default function WorkoutSession({
           [result.set.id]: {
             weight: String(result.set.weight),
             reps: String(result.set.reps),
+            rpe: result.set.rpe != null ? String(result.set.rpe) : '',
           },
         }))
       }
@@ -275,8 +290,9 @@ export default function WorkoutSession({
                       key={set.id}
                       className="rounded-xl border border-zinc-800 bg-zinc-950/40 px-3 py-2"
                     >
-                      <div className="grid grid-cols-[22px_minmax(0,1fr)_minmax(0,1fr)_36px] items-center gap-2">
+                      <div className="grid grid-cols-[22px_minmax(0,1fr)_minmax(0,1fr)_64px_36px] items-center gap-2">
                         <span className="text-xs font-medium text-zinc-400">{index + 1}</span>
+
                         <input
                           type="number"
                           step="0.5"
@@ -284,10 +300,7 @@ export default function WorkoutSession({
                           onChange={(event) =>
                             setSetDrafts((prev) => ({
                               ...prev,
-                              [set.id]: {
-                                weight: event.target.value,
-                                reps: prev[set.id]?.reps ?? String(set.reps),
-                              },
+                              [set.id]: { ...prev[set.id], weight: event.target.value },
                             }))
                           }
                           className="h-10 rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm text-white"
@@ -299,13 +312,26 @@ export default function WorkoutSession({
                           onChange={(event) =>
                             setSetDrafts((prev) => ({
                               ...prev,
-                              [set.id]: {
-                                weight: prev[set.id]?.weight ?? String(set.weight),
-                                reps: event.target.value,
-                              },
+                              [set.id]: { ...prev[set.id], reps: event.target.value },
                             }))
                           }
                           className="h-10 rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm text-white"
+                        />
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="1"
+                          max="10"
+                          placeholder="RPE"
+                          title="Rate of Perceived Exertion (1–10)"
+                          value={setDrafts[set.id]?.rpe ?? ''}
+                          onChange={(event) =>
+                            setSetDrafts((prev) => ({
+                              ...prev,
+                              [set.id]: { ...prev[set.id], rpe: event.target.value },
+                            }))
+                          }
+                          className="h-10 rounded-lg border border-zinc-700 bg-zinc-900 px-2 text-center text-sm text-white placeholder:text-zinc-600"
                         />
                         <button
                           type="button"
@@ -331,6 +357,16 @@ export default function WorkoutSession({
                           )}
                         </button>
                       </div>
+                      <VideoUpload
+                        setId={set.id}
+                        workoutId={workoutId}
+                        exerciseName={exerciseName}
+                        weight={set.weight}
+                        reps={set.reps}
+                        rpe={set.rpe}
+                        oneRepMax={getOneRepMax(exerciseName, liftOneRepMaxes)}
+                        initialVideoUrl={set.video_url}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -344,7 +380,7 @@ export default function WorkoutSession({
                   exerciseName={exerciseName}
                   defaultWeight={latestSet?.weight}
                   defaultReps={latestSet?.reps}
-                  onAdded={handleSetAdded}
+                  onAdded={(set) => handleSetAdded({ ...set, video_url: null })}
                 />
               </div>
             </div>

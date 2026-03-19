@@ -31,7 +31,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
 
   const { data: sets, error: setsError } = await supabase
     .from('sets')
-    .select('id, exercise_name, weight, reps, created_at')
+    .select('id, exercise_name, weight, reps, rpe, created_at, video_url')
     .eq('workout_id', workoutId)
     .order('created_at', { ascending: true })
 
@@ -49,10 +49,23 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
     exercise_name: string
     weight: number
     reps: number
+    rpe: number | null
     created_at: string
+    video_url: string | null
   }
 
   const setRows = (sets ?? []) as WorkoutSet[]
+
+  // Fetch all user-defined lifts for 1RM lookups (works for any exercise, not just the big 3).
+  const { data: liftsData } = await supabase
+    .from('lifts')
+    .select('name, one_rep_max')
+    .eq('user_id', userId)
+
+  const liftOneRepMaxes: Record<string, number> = {}
+  for (const lift of liftsData ?? []) {
+    if (lift.one_rep_max) liftOneRepMaxes[lift.name.toLowerCase()] = lift.one_rep_max
+  }
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6 px-5 py-8">
@@ -66,6 +79,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
         initialWorkoutName={workout.name ?? 'Untitled Workout'}
         workoutStatus={workout.status}
         initialSets={setRows}
+        liftOneRepMaxes={liftOneRepMaxes}
       />
     </div>
   )

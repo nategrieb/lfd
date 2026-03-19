@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { addSet } from '../actions'
 
 type AddSetFormProps = {
@@ -8,7 +8,7 @@ type AddSetFormProps = {
   exerciseName: string
   defaultWeight?: number
   defaultReps?: number
-  onAdded?: (set: { id: string; exercise_name: string; weight: number; reps: number; created_at: string }) => void
+  onAdded?: (set: { id: string; exercise_name: string; weight: number; reps: number; rpe: number | null; created_at: string }) => void
 }
 
 function asInputValue(value?: number) {
@@ -26,26 +26,23 @@ export default function AddSetForm({
   const [formState, setFormState] = useState({
     weight: asInputValue(defaultWeight),
     reps: asInputValue(defaultReps),
+    rpe: '',
   })
   const [message, setMessage] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-
-  const bumpWeight = (delta: number) => {
-    const current = Number(formState.weight)
-    if (Number.isNaN(current)) {
-      return
-    }
-
-    const next = Math.max(0, current + delta)
-    setFormState((prev) => ({ ...prev, weight: String(next) }))
-  }
+  const weightRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setFormState({
       weight: asInputValue(defaultWeight),
       reps: asInputValue(defaultReps),
+      rpe: '',
     })
   }, [exerciseName, defaultWeight, defaultReps])
+
+  useEffect(() => {
+    if (isOpen) weightRef.current?.focus()
+  }, [isOpen])
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target
@@ -70,10 +67,11 @@ export default function AddSetForm({
           setFormState({
             weight: String(result.set.weight),
             reps: String(result.set.reps),
+            rpe: result.set.rpe != null ? String(result.set.rpe) : '',
           })
         }
         if (result.set && onAdded) {
-          onAdded(result.set)
+          onAdded({ ...result.set, rpe: result.set.rpe ?? null })
         }
         setIsOpen(false)
       }
@@ -85,7 +83,7 @@ export default function AddSetForm({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex items-center gap-2 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-100 hover:bg-zinc-800"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-100 hover:bg-zinc-800"
       >
         <span className="text-sm leading-none">+</span>
         Add set
@@ -94,68 +92,69 @@ export default function AddSetForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-2">
-      <div className="grid grid-cols-[1fr,1fr,auto] items-end gap-2">
-        <div>
-          <label className="block text-xs font-medium text-zinc-300">Weight</label>
+    <form onSubmit={handleSubmit}>
+      <div className="rounded-xl border border-blue-500/40 bg-zinc-950/40 px-3 py-2">
+        <div className="grid grid-cols-[22px_minmax(0,1fr)_minmax(0,1fr)_64px_36px] items-center gap-2">
+          <span className="text-xs font-medium text-zinc-600">+</span>
+
           <input
+            ref={weightRef}
             name="weight"
             type="number"
             step="0.5"
+            placeholder="lbs"
             value={formState.weight}
             onChange={handleChange}
-            className="mt-1 h-10 w-full rounded-lg border border-zinc-800 bg-zinc-950/70 px-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="h-10 rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <div className="mt-1 flex items-center gap-1.5">
-            {[2.5, 5, 10].map((step) => (
-              <button
-                key={step}
-                type="button"
-                onClick={() => bumpWeight(step)}
-                className="rounded-full border border-zinc-700 px-2 py-0.5 text-[11px] font-semibold text-zinc-200 hover:bg-zinc-800"
-              >
-                +{step}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium text-zinc-300">Reps</label>
           <input
             name="reps"
             type="number"
             min="1"
+            placeholder="reps"
             value={formState.reps}
             onChange={handleChange}
-            className="mt-1 h-10 w-full rounded-lg border border-zinc-800 bg-zinc-950/70 px-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="h-10 rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-        </div>
+          <input
+            name="rpe"
+            type="number"
+            step="0.5"
+            min="1"
+            max="10"
+            placeholder="RPE"
+            value={formState.rpe}
+            onChange={handleChange}
+            className="h-10 rounded-lg border border-zinc-700 bg-zinc-900 px-2 text-center text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
 
-        <div className="flex items-center gap-2 pb-[2px]">
           <button
             type="submit"
             disabled={isPending}
-            className="h-10 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label="Save set"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/40 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isPending ? 'Adding…' : 'Add'}
+            {isPending ? (
+              <span className="text-[10px]">…</span>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="h-4 w-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+            )}
           </button>
+        </div>
+
+        <div className="mt-1.5 flex items-center gap-3 pl-[30px]">
           <button
             type="button"
-            onClick={() => {
-              setIsOpen(false)
-              setMessage(null)
-            }}
-            className="h-10 rounded-lg border border-zinc-700 px-3 text-xs font-semibold text-zinc-200 hover:bg-zinc-800"
+            onClick={() => { setIsOpen(false); setMessage(null) }}
+            className="text-xs text-zinc-500 hover:text-zinc-300"
           >
             Cancel
           </button>
+          {message ? <span className="text-xs text-rose-400">{message}</span> : null}
         </div>
       </div>
-
-      {message ? (
-        <p className="rounded-lg bg-zinc-800/70 px-3 py-2 text-xs text-zinc-200">{message}</p>
-      ) : null}
     </form>
   )
 }

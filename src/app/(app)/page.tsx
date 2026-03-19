@@ -2,6 +2,8 @@ import { createServerSupabase } from '@/lib/supabase-server'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import StartWorkoutButton from './workout/StartWorkoutButton'
+import FeedCard from '@/components/FeedCard'
+import { buildFeed, type FeedWorkout } from '@/lib/feed'
 
 export default async function DashboardPage() {
   const supabase = await createServerSupabase()
@@ -11,14 +13,7 @@ export default async function DashboardPage() {
 
   if (!user?.id) redirect('/login')
 
-  // Fetch profile for 1RM display
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('squat_1rm, bench_1rm, deadlift_1rm')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  // Check for in-progress workout
+  // Check for in-progress workout (drives the CTA)
   const { data: activeWorkout } = await supabase
     .from('workouts')
     .select('id, name')
@@ -28,96 +23,103 @@ export default async function DashboardPage() {
     .limit(1)
     .maybeSingle()
 
-  // Recent completed workouts
-  const { data: recentWorkouts } = await supabase
+  // 1RM map for scoring — uses the lifts table (generic, any exercise)
+  const { data: liftsData } = await supabase
+    .from('lifts')
+    .select('name, one_rep_max')
+    .eq('user_id', user.id)
+
+  const liftsMap: Record<string, number> = {}
+  for (const lift of liftsData ?? []) {
+    if (lift.one_rep_max) liftsMap[lift.name.toLowerCase()] = lift.one_rep_max
+  }
+
+  // Feed source: completed workouts from the last 60 days with all set data.
+  // Future: swap `.eq('user_id', user.id)` for `.in('user_id', [userId, ...friendIds])`
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - 60)
+
+  const { data: rawWorkouts } = await supabase
     .from('workouts')
-    .select('id, name, created_at, sets(exercise_name)')
+    .select('id, name, created_at, user_id, sets(id, exercise_name, weight, reps, rpe, video_url)')
     .eq('user_id', user.id)
     .eq('status', 'completed')
+    .gte('created_at', cutoff.toISOString())
     .order('created_at', { ascending: false })
-    .limit(3)
+    .limit(30)
 
-  const lifts = [
-    { label: 'Squat', value: profile?.squat_1rm ?? 0 },
-    { label: 'Bench', value: profile?.bench_1rm ?? 0 },
-    { label: 'Deadlift', value: profile?.deadlift_1rm ?? 0 },
-  ]
+  const feedItems = buildFeed((rawWorkouts ?? []) as FeedWorkout[], liftsMap)
 
-  const total = lifts.reduce((sum, l) => sum + l.value, 0)
+  const displayName = user.email?.split('@')[0] ?? 'You'
+  const userInitial = (displayName[0] ?? 'U').toUpperCase()
 
   return (
     <div className="mx-auto max-w-lg px-5 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold tracking-tight">Lift For Dan</h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          {user.email}
-        </p>
+
+      {/* ── Header ─────────────────────────────────────────────────── */}
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-3xl font-extrabold tracking-tight">LFD</h1>
+        <Link href="/profile" className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-black">
+          {userInitial}
+        </Link>
       </div>
 
-      {/* 1RM Cards */}
-      <section className="mb-8">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-          Your 1RMs
-        </h2>
-        <div className="grid grid-cols-3 gap-3">
-          {lifts.map((lift) => (
-            <div
-              key={lift.label}
-              className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 text-center"
-            >
-              <p className="text-2xl font-bold">{lift.value || '—'}</p>
-              <p className="mt-1 text-xs text-zinc-400">{lift.label}</p>
-            </div>
-          ))}
-        </div>
-        {total > 0 && (
-          <p className="mt-3 text-center text-sm text-zinc-400">
-            Total: <span className="font-semibold text-white">{total} lbs</span>
-          </p>
-        )}
-      </section>
-
-      {/* CTA */}
+      {/* ── Workout CTA ────────────────────────────────────────────── */}
       <section className="mb-8">
         {activeWorkout ? (
           <Link
             href={`/workout/${activeWorkout.id}`}
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 text-lg font-semibold text-black shadow-lg shadow-orange-500/20 transition hover:brightness-110"
           >
-            Continue Workout
+            Continue Workout →
           </Link>
         ) : (
           <StartWorkoutButton />
         )}
       </section>
 
-      {/* Recent Workouts */}
-      {recentWorkouts && recentWorkouts.length > 0 && (
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-              Recent
-            </h2>
-            <Link href="/history" className="text-xs font-medium text-blue-400">
-              View all
-            </Link>
-          </div>
-          <ul className="space-y-2">
-            {recentWorkouts.map((w) => {
-              const exercises = Array.from(
-                new Set((w.sets ?? []).map((s: { exercise_name: string }) => s.exercise_name))
-              ).filter(Boolean)
+      {/* ── Feed ───────────────────────────────────────────────────── */}
+      <section>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            Highlights
+          </h2>
+          <Link href="/history" className="text-xs font-medium text-zinc-400 hover:text-white transition-colors">
+            All workouts →
+          </Link>
+        </div>
 
-              return (
-                <li key={w.id}>
-                  <Link
-                    href={`/workout/${w.id}/summary`}
-                    className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3 transition active:bg-zinc-800/60"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">
-                        {w.name?.trim() || (exercises.length ? exercises.join(', ') : 'Workout')}
+        {feedItems.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-zinc-700 px-6 py-12 text-center">
+            <p className="text-sm font-medium text-zinc-400">No workouts yet.</p>
+            <p className="mt-1 text-xs text-zinc-600">Log your first session and it will appear here.</p>
+          </div>
+        ) : (
+          <ul className="space-y-4">
+            {feedItems.map((item) => (
+              <li key={item.workout.id}>
+                <FeedCard
+                  item={item}
+                  displayName={displayName}
+                  userInitial={userInitial}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Spacer so last card clears the bottom nav */}
+      <div className="h-4" />
+    </div>
+  )
+}
+
+// ── Dead code removed below — previously the Recent section ──────────────────
+// The old recentWorkouts query and JSX list have been replaced by the feed.
+// Keeping this comment as a breadcrumb; delete freely.
+//
+// To restore: git diff HEAD~1 src/app/(app)/page.tsx
                       </p>
                       <p className="text-xs text-zinc-500">
                         {new Date(w.created_at).toLocaleDateString(undefined, {
