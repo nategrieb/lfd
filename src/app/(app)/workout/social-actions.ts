@@ -18,7 +18,8 @@ export async function toggleJork(workoutId: string, workoutOwnerId: string) {
     .maybeSingle()
 
   if (existing) {
-    await supabase.from('workout_jorks').delete().eq('id', existing.id)
+    const { error: delErr } = await supabase.from('workout_jorks').delete().eq('id', existing.id)
+    if (delErr) return { error: delErr.message }
     // Remove the paired jork notification
     await supabase
       .from('notifications')
@@ -29,7 +30,10 @@ export async function toggleJork(workoutId: string, workoutOwnerId: string) {
     revalidatePath('/')
     return { jorked: false }
   } else {
-    await supabase.from('workout_jorks').insert({ workout_id: workoutId, user_id: user.id })
+    const { error: insErr } = await supabase
+      .from('workout_jorks')
+      .insert({ workout_id: workoutId, user_id: user.id })
+    if (insErr) return { error: insErr.message }
     // Notify workout owner (not for self-jorks)
     if (workoutOwnerId !== user.id) {
       await supabase.from('notifications').insert({
