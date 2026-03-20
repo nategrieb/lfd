@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from 'react'
 import { toggleJork } from '@/app/(app)/workout/social-actions'
-import JorkIcon from './JorkIcon'
 import WaterSplash from './WaterSplash'
 
 type Props = {
@@ -52,7 +51,7 @@ export default function JorkButton({ workoutId, workoutOwnerId, initialCount, in
             : 'text-zinc-400 hover:bg-zinc-50 hover:text-zinc-600'
         }`}
       >
-        <JorkIcon className="h-5 w-auto" />
+        <span className="text-base leading-none" aria-hidden="true">🤘</span>
         {count > 0 && <span className="tabular-nums leading-none">{count}</span>}
         <span className="sr-only">{hasJorked ? 'Jorked' : 'Jork their beanits'}</span>
       </button>

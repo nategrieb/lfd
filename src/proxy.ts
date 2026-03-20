@@ -31,9 +31,10 @@ export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isAuthPage = pathname.startsWith('/login')
   const isOnboarding = pathname.startsWith('/onboarding')
+  const isPublic = pathname.startsWith('/w/')
 
   // 1. Unauthenticated — send to login (except public auth pages)
-  if (!user && !isAuthPage) {
+  if (!user && !isAuthPage && !isPublic) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url, { status: 302 })
@@ -41,7 +42,7 @@ export default async function proxy(request: NextRequest) {
 
   // 2. Authenticated but no username — send to onboarding
   //    Skip the check on auth/onboarding routes to avoid redirect loops.
-  if (user && !isAuthPage && !isOnboarding) {
+  if (user && !isAuthPage && !isOnboarding && !isPublic) {
     try {
       const { data: profile } = await supabase
         .from('profiles')
