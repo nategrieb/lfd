@@ -78,14 +78,14 @@ export default function ProfileForm({ userId, username, displayName, avatarUrl, 
   const initial = (formState.display_name?.[0] || formState.username?.[0] || '?').toUpperCase()
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-5">
 
       {/* ── Avatar ────────────────────────────────────────────── */}
-      <div className="flex flex-col items-center gap-2">
+      <div className="flex items-center gap-4">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="group relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full text-2xl font-bold text-white ring-2 ring-transparent transition hover:ring-green-700 focus:outline-none focus:ring-green-700"
+          className="group relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full text-lg font-bold text-white ring-2 ring-transparent transition hover:ring-green-700 focus:outline-none focus:ring-green-700"
           style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
           aria-label="Change profile photo"
         >
@@ -95,14 +95,36 @@ export default function ProfileForm({ userId, username, displayName, avatarUrl, 
           ) : (
             initial
           )}
-          <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-white" aria-hidden="true">
+          <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 text-white" aria-hidden="true">
               <path d="M12 9a3.75 3.75 0 100 7.5A3.75 3.75 0 0012 9z" />
               <path fillRule="evenodd" d="M9.344 3.071a49.52 49.52 0 015.312 0c.967.052 1.83.585 2.332 1.39l.821 1.317c.24.383.645.643 1.11.71.386.054.77.113 1.152.177 1.432.239 2.429 1.493 2.429 2.909V18a3 3 0 01-3 3h-15a3 3 0 01-3-3V9.574c0-1.416.997-2.67 2.429-2.909.382-.064.766-.123 1.151-.178a1.56 1.56 0 001.11-.71l.822-1.315a2.942 2.942 0 012.332-1.39zM6.75 12.75a5.25 5.25 0 1110.5 0 5.25 5.25 0 01-10.5 0z" clipRule="evenodd" />
             </svg>
           </span>
         </button>
-        <p className="text-xs text-zinc-500">Tap to change photo</p>
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="relative">
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-zinc-400 select-none text-sm">@</span>
+            <input
+              name="username"
+              type="text"
+              value={formState.username}
+              onChange={handleChange}
+              placeholder="username"
+              autoComplete="username"
+              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-2 pl-6 pr-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-700"
+            />
+          </div>
+          <input
+            name="display_name"
+            type="text"
+            value={formState.display_name}
+            onChange={handleChange}
+            placeholder="Display name"
+            autoComplete="name"
+            className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-700"
+          />
+        </div>
         <input
           ref={fileInputRef}
           type="file"
@@ -113,85 +135,32 @@ export default function ProfileForm({ userId, username, displayName, avatarUrl, 
         />
       </div>
 
-      {/* ── Identity ──────────────────────────────────────────── */}
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-zinc-700">Username</label>
-          <p className="mt-0.5 text-xs text-zinc-400">How people find and follow you · 3–30 chars, lowercase letters, numbers, underscores</p>
-          <div className="relative mt-1">
-            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-zinc-400 select-none">@</span>
+      {/* ── Lift Stats ────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { name: 'squat',    label: 'Squat 1RM',    value: formState.squat },
+          { name: 'bench',    label: 'Bench 1RM',    value: formState.bench },
+          { name: 'deadlift', label: 'Deadlift 1RM', value: formState.deadlift },
+        ].map((f) => (
+          <div key={f.name}>
+            <label className="block text-[11px] font-medium uppercase tracking-wide text-zinc-400">{f.label}</label>
             <input
-              name="username"
-              type="text"
-              value={formState.username}
+              name={f.name}
+              type="number"
+              step="0.5"
+              value={f.value}
               onChange={handleChange}
-              placeholder="your_handle"
-              autoComplete="username"
-              className="w-full rounded-xl border border-zinc-200 bg-white py-3 pl-7 pr-4 text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-green-700"
+              className="mt-1 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-700"
             />
           </div>
-        </div>
-
+        ))}
         <div>
-          <label className="block text-sm font-medium text-zinc-700">Display name</label>
-          <p className="mt-0.5 text-xs text-zinc-400">Your real name or nickname shown on the feed</p>
-          <input
-            name="display_name"
-            type="text"
-            value={formState.display_name}
-            onChange={handleChange}
-            placeholder="Alex Johnson"
-            autoComplete="name"
-            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-green-700"
-          />
-        </div>
-      </div>
-
-      {/* ── Lift Stats ────────────────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className="block text-sm font-medium text-zinc-700">Squat 1RM</label>
-          <input
-            name="squat"
-            type="number"
-            step="0.5"
-            value={formState.squat}
-            onChange={handleChange}
-            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-green-700"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-zinc-700">Bench 1RM</label>
-          <input
-            name="bench"
-            type="number"
-            step="0.5"
-            value={formState.bench}
-            onChange={handleChange}
-            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-green-700"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-zinc-700">Deadlift 1RM</label>
-          <input
-            name="deadlift"
-            type="number"
-            step="0.5"
-            value={formState.deadlift}
-            onChange={handleChange}
-            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-green-700"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-zinc-700">Preferred unit</label>
+          <label className="block text-[11px] font-medium uppercase tracking-wide text-zinc-400">Unit</label>
           <select
             name="preferredUnit"
             value={formState.preferredUnit}
             onChange={handleChange}
-            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-green-700"
+            className="mt-1 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-700"
           >
             <option value="lb">lb</option>
             <option value="kg">kg</option>
@@ -200,18 +169,18 @@ export default function ProfileForm({ userId, username, displayName, avatarUrl, 
       </div>
 
       {message ? (
-        <p className={`rounded-lg px-4 py-3 text-sm ${
-          message === 'Saved!' ? 'bg-green-50 text-green-800' : 'bg-zinc-100 text-zinc-700'
+        <p className={`rounded-lg px-3 py-2 text-sm ${
+          message === 'Saved!' ? 'bg-green-50 text-green-700' : 'bg-zinc-100 text-zinc-600'
         }`}>{message}</p>
       ) : null}
 
       <button
         type="submit"
         disabled={isPending}
-        className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
       >
-        {isPending ? 'Saving…' : 'Save profile'}
+        {isPending ? 'Saving…' : 'Save'}
       </button>
     </form>
   )

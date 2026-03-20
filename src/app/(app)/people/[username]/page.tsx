@@ -25,17 +25,23 @@ export default async function UserProfilePage({ params }: Props) {
 
   if (!profile) notFound()
 
-  // Redirect to own history page if viewing yourself
-  if (profile.id === viewer.id) redirect('/history')
+  // Redirect to own profile page if viewing yourself
+  if (profile.id === viewer.id) redirect('/profile')
 
-  // Is the viewer already following this user?
-  const { data: followRow } = await supabase
-    .from('follows')
-    .select('follower_id')
-    .eq('follower_id', viewer.id)
-    .eq('following_id', profile.id)
-    .maybeSingle()
+  // Is the viewer already following this user? + social counts + active program
+  const [{ data: followRow }, { count: followersCount }, { count: followingCount }, { data: enrollment }] = await Promise.all([
+    supabase.from('follows').select('follower_id').eq('follower_id', viewer.id).eq('following_id', profile.id).maybeSingle(),
+    supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profile.id),
+    supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', profile.id),
+    supabase
+      .from('program_enrollments')
+      .select('id, program_templates(name)')
+      .eq('user_id', profile.id)
+      .eq('status', 'active')
+      .maybeSingle(),
+  ])
   const isFollowing = !!followRow
+  const programName = (enrollment?.program_templates as any)?.name as string | undefined
 
   // Fetch their completed workouts for the feed
   const cutoff = new Date()
@@ -101,6 +107,11 @@ export default async function UserProfilePage({ params }: Props) {
           {profile.username && (
             <p className="text-sm text-zinc-500">@{profile.username}</p>
           )}
+          <p className="mt-0.5 text-xs text-zinc-400">
+            <span className="font-semibold text-zinc-700">{followersCount ?? 0}</span> followers
+            {' · '}
+            <span className="font-semibold text-zinc-700">{followingCount ?? 0}</span> following
+          </p>
         </div>
         <FollowButton userId={profile.id} initialIsFollowing={isFollowing} />
       </div>
@@ -120,6 +131,21 @@ export default async function UserProfilePage({ params }: Props) {
           <p className="mt-1 text-xs text-zinc-500">Total sets</p>
         </div>
       </section>
+
+      {/* Current program */}
+      {programName && (
+        <section className="mb-6">
+          <div
+            className="flex items-center gap-3 rounded-2xl px-5 py-4"
+            style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
+          >
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-green-200">Current program</p>
+              <p className="mt-0.5 truncate text-sm font-bold text-white">{programName}</p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Big-three 1RMs */}
       {orms.length > 0 && (

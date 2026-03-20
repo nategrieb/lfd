@@ -167,9 +167,9 @@ export default async function PeoplePage({ searchParams }: { searchParams: Searc
                   </div>
                   <div className="min-w-0 flex-1">
                     {profile.display_name && (
-                      <p className="truncate text-sm font-semibold">{profile.display_name}</p>
+                      <p className="truncate text-sm font-semibold text-zinc-900">{profile.display_name}</p>
                     )}
-                    <p className={`truncate text-xs ${profile.display_name ? 'text-zinc-500' : 'text-sm font-semibold text-white'}`}>
+                    <p className={`truncate ${profile.display_name ? 'text-xs text-zinc-500' : 'text-sm font-semibold text-zinc-900'}`}>
                       {profile.username ? `@${profile.username}` : profile.id.slice(0, 8)}
                     </p>
                   </div>
@@ -178,7 +178,7 @@ export default async function PeoplePage({ searchParams }: { searchParams: Searc
               return (
                 <li
                   key={profile.id}
-                  className="flex items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3"
+                  className="flex items-center gap-3 rounded-2xl border border-zinc-100 bg-white px-4 py-3 shadow-sm"
                 >
                   {href ? (
                     <Link href={href} className="flex min-w-0 flex-1 items-center gap-3 hover:opacity-80 transition-opacity">
