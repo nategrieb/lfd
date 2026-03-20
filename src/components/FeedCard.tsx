@@ -53,9 +53,6 @@ function VideoSlide({ url, label, onOpen }: { url: string; label: string; onOpen
       />
 
       <div className="absolute inset-0 flex flex-col pointer-events-none">
-        <p className="m-3 self-start rounded bg-black/50 px-2.5 py-1 text-[11px] font-semibold leading-none text-white backdrop-blur-sm">
-          {label}
-        </p>
         <div className="flex flex-1 items-center justify-center">
           <div
             className="flex h-14 w-14 items-center justify-center rounded-full shadow-xl shadow-black/50"
