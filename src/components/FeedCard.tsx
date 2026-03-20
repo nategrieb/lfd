@@ -1,6 +1,7 @@
 'use client'
 
 import type { FeedItem, MediaItem } from '@/lib/feed'
+import { isCardioSet, formatCardioDistance, formatCardioDuration } from '@/lib/feed'
 import Link from 'next/link'
 import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -166,11 +167,16 @@ export default function FeedCard({ item, displayName, userInitial, username, ava
       countByExercise[set.exercise_name] = (countByExercise[set.exercise_name] ?? 0) + 1
       const setNum = countByExercise[set.exercise_name]
       clips.push({
-        id: set.id,
-        src: set.video_url,
-        title: `${set.exercise_name} · Set ${setNum}`,
-        subtitle: `${set.weight} lbs × ${set.reps}${set.rpe != null ? ` · RPE ${set.rpe}` : ''}`,
-      })
+          id: set.id,
+          src: set.video_url,
+          title: `${set.exercise_name} · Set ${setNum}`,
+          subtitle: isCardioSet(set)
+            ? [
+                set.distance_m ? formatCardioDistance(set.distance_m) : null,
+                set.duration_seconds ? formatCardioDuration(set.duration_seconds) : null,
+              ].filter(Boolean).join(' · ')
+            : `${set.weight} lbs × ${set.reps}${set.rpe != null ? ` · RPE ${set.rpe}` : ''}`,
+        })
     }
 
     return clips
@@ -186,7 +192,10 @@ export default function FeedCard({ item, displayName, userInitial, username, ava
   const profileHref = username ? `/people/${username}` : null
 
   const exerciseCount = new Set(sets.map((s) => s.exercise_name)).size
-  const totalVolume = sets.reduce((sum, s) => sum + s.weight * s.reps, 0)
+  const strengthSets = sets.filter(s => !isCardioSet(s))
+  const cardioSets = sets.filter(s => isCardioSet(s))
+  const totalVolume = strengthSets.reduce((sum, s) => sum + s.weight * s.reps, 0)
+  const totalDistanceM = cardioSets.reduce((sum, s) => sum + (s.distance_m ?? 0), 0)
   const workoutTitle = workout.name?.trim() || null
   const primaryLift = topSetsByExercise[0] ?? null
 
@@ -260,7 +269,14 @@ export default function FeedCard({ item, displayName, userInitial, username, ava
               >
                 {primaryLift.set.exercise_name}
               </Link>
-              <p className="text-xs text-zinc-500">{primaryLift.set.weight} lbs × {primaryLift.set.reps} reps</p>
+              <p className="text-xs text-zinc-500">
+                {isCardioSet(primaryLift.set)
+                  ? [
+                      primaryLift.set.distance_m ? formatCardioDistance(primaryLift.set.distance_m) : null,
+                      primaryLift.set.duration_seconds ? formatCardioDuration(primaryLift.set.duration_seconds) : null,
+                    ].filter(Boolean).join(' · ')
+                  : `${primaryLift.set.weight} lbs × ${primaryLift.set.reps} reps`}
+              </p>
             </div>
             <div className="flex shrink-0 flex-wrap justify-end gap-1.5 pt-0.5">
               {extraBadges.map(badge => (
@@ -289,7 +305,11 @@ export default function FeedCard({ item, displayName, userInitial, username, ava
         <p className="text-xs text-zinc-400">
           {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
           {' · '}{sets.length} {sets.length === 1 ? 'set' : 'sets'}
-          {' · '}{totalVolume.toLocaleString()} lbs total
+          {totalDistanceM > 0
+            ? <> · {formatCardioDistance(totalDistanceM)}</>  
+            : totalVolume > 0
+              ? <> · {totalVolume.toLocaleString()} lbs total</>
+              : null}
         </p>
       </div>
 

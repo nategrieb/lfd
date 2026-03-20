@@ -201,15 +201,24 @@ async function _importStrongCSV(formData: FormData): Promise<ImportResult> {
     // Build and insert sets
     const setsToInsert = workoutRows
       .filter(row => row['Exercise Name']?.trim())
-      .map((row, i) => ({
-        workout_id: workout.id,
-        user_id: user.id,
-        exercise_name: row['Exercise Name'].trim(),
-        weight: row.Weight !== '' ? Number(row.Weight) : 0,
-        reps: row.Reps !== '' ? Number(row.Reps) : 0,
-        rpe: row.RPE !== '' && row.RPE != null ? Number(row.RPE) : null,
-        set_order: row['Set Order'] !== '' ? Number(row['Set Order']) : i + 1,
-      }))
+      .map((row, i) => {
+        const distanceMiles = row.Distance !== '' ? Number(row.Distance) : 0
+        const durationSec = row.Seconds !== '' ? Number(row.Seconds) : 0
+        const weight = row.Weight !== '' ? Number(row.Weight) : 0
+        const reps = row.Reps !== '' ? Number(row.Reps) : 0
+        return {
+          workout_id: workout.id,
+          user_id: user.id,
+          exercise_name: row['Exercise Name'].trim(),
+          weight,
+          reps,
+          rpe: row.RPE !== '' && row.RPE != null ? Number(row.RPE) : null,
+          set_order: row['Set Order'] !== '' ? Number(row['Set Order']) : i + 1,
+          // Cardio fields — null for strength sets
+          distance_m: distanceMiles > 0 ? distanceMiles * 1609.344 : null,
+          duration_seconds: durationSec > 0 ? Math.round(durationSec) : null,
+        }
+      })
 
     if (setsToInsert.length === 0) {
       importedWorkouts++

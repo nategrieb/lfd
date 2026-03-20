@@ -25,6 +25,28 @@ export type FeedSet = {
   rpe: number | null
   video_url: string | null
   created_at?: string
+  distance_m?: number | null
+  duration_seconds?: number | null
+}
+
+export function isCardioSet(set: FeedSet): boolean {
+  return (
+    (set.distance_m != null && set.distance_m > 0) ||
+    (set.duration_seconds != null && set.duration_seconds > 0 && set.weight === 0 && set.reps === 0)
+  )
+}
+
+export function formatCardioDistance(meters: number): string {
+  const miles = meters / 1609.344
+  return miles >= 10 ? `${Math.round(miles)} mi` : `${parseFloat(miles.toFixed(2))} mi`
+}
+
+export function formatCardioDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = Math.round(seconds % 60)
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  return `${m}:${String(s).padStart(2, '0')}`
 }
 
 export type MediaItem =
@@ -72,6 +94,7 @@ export type FeedItem = {
 // ─── Scoring weights ────────────────────────────────────────────────────────
 
 const WEIGHT_VIDEO = 40
+const CARDIO_BASE = 15
 
 const RPE_WEIGHTS: [number, number][] = [
   [10, 30],
@@ -96,6 +119,12 @@ function scoreSet(
   set: FeedSet,
   liftsMap: Record<string, number>,
 ): { rawScore: number; pct: number | null } {
+  // Cardio sets get a flat base score so they appear in the feed but
+  // don't outrank a genuine strength PR.
+  if (isCardioSet(set)) {
+    return { rawScore: CARDIO_BASE + (set.video_url ? WEIGHT_VIDEO : 0), pct: null }
+  }
+
   let raw = 0
 
   if (set.video_url) raw += WEIGHT_VIDEO
@@ -191,7 +220,13 @@ export function buildFeed(
         .map(({ set }) => ({
           kind: 'video' as const,
           url: set.video_url!,
-          label: `${set.exercise_name} · ${set.weight} lbs × ${set.reps}`,
+          label: isCardioSet(set)
+            ? [
+                set.exercise_name,
+                set.distance_m ? formatCardioDistance(set.distance_m) : null,
+                set.duration_seconds ? formatCardioDuration(set.duration_seconds) : null,
+              ].filter(Boolean).join(' · ')
+            : `${set.exercise_name} · ${set.weight} lbs × ${set.reps}`,
         })),
       ...(workout.post_photos ?? []).map(url => ({ kind: 'photo' as const, url })),
     ]
