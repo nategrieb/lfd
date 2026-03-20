@@ -576,7 +576,18 @@ export async function deleteWorkout({ workoutId }: { workoutId: string }) {
 
   // Best-effort bulk-remove all video files from Storage.
   if (setsWithVideo && setsWithVideo.length > 0) {
-    const paths = setsWithVideo.map((s) => `${user.id}/${workoutId}/${s.id}.mp4`)
+    const prefix = '/storage/v1/object/public/workout-videos/'
+    const paths = setsWithVideo.map((s) => {
+      const raw = s.video_url ?? ''
+      const idx = raw.indexOf(prefix)
+      if (idx >= 0) {
+        const tail = raw.slice(idx + prefix.length)
+        const q = tail.indexOf('?')
+        return q >= 0 ? tail.slice(0, q) : tail
+      }
+      // Fallback for legacy deterministic paths.
+      return `${user.id}/${workoutId}/${s.id}.mp4`
+    })
     await supabase.storage.from('workout-videos').remove(paths)
   }
 

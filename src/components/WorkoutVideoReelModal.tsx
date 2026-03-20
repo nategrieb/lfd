@@ -25,14 +25,40 @@ export default function WorkoutVideoReelModal({ clips, initialIndex = 0, onClose
 
   const clipCount = clips.length
 
+  const clampIndex = useCallback((idx: number) => {
+    return Math.max(0, Math.min(idx, clipCount - 1))
+  }, [clipCount])
+
   const scrollToIndex = useCallback((idx: number, smooth = true) => {
     const container = containerRef.current
     if (!container) return
-    const clamped = Math.max(0, Math.min(idx, clipCount - 1))
+    const clamped = clampIndex(idx)
     const top = clamped * container.clientHeight
     container.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' })
     setActiveIndex(clamped)
-  }, [clipCount])
+  }, [clampIndex])
+
+  const ensureInitialPosition = useCallback((idx: number) => {
+    let attempts = 0
+    const clamped = clampIndex(idx)
+    const tryPosition = () => {
+      const container = containerRef.current
+      attempts += 1
+      if (!container) return
+
+      if (container.clientHeight > 0) {
+        container.scrollTo({ top: clamped * container.clientHeight, behavior: 'auto' })
+        setActiveIndex(clamped)
+        return
+      }
+
+      if (attempts < 8) {
+        requestAnimationFrame(tryPosition)
+      }
+    }
+
+    requestAnimationFrame(tryPosition)
+  }, [clampIndex])
 
   const goNext = useCallback(() => {
     if (activeIndex < clipCount - 1) scrollToIndex(activeIndex + 1)
@@ -74,8 +100,8 @@ export default function WorkoutVideoReelModal({ clips, initialIndex = 0, onClose
   }, [clipCount])
 
   useEffect(() => {
-    scrollToIndex(initialIndex, false)
-  }, [initialIndex, scrollToIndex])
+    ensureInitialPosition(initialIndex)
+  }, [initialIndex, ensureInitialPosition])
 
   useEffect(() => {
     for (let i = 0; i < clips.length; i++) {
@@ -151,10 +177,6 @@ export default function WorkoutVideoReelModal({ clips, initialIndex = 0, onClose
           </section>
         ))}
       </div>
-
-      <p className="pointer-events-none absolute bottom-3 left-0 right-0 z-20 text-center text-[11px] text-zinc-300">
-        Swipe up/down to browse clips
-      </p>
     </div>
   )
 

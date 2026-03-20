@@ -674,6 +674,18 @@ export default function WorkoutSession({
                       key={set.id}
                       className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2"
                     >
+                      {(() => {
+                        const draft = setDrafts[set.id]
+                        const draftWeight = Number(draft?.weight)
+                        const draftReps = Number(draft?.reps)
+                        const draftRpe = draft?.rpe != null && draft.rpe !== '' ? Number(draft.rpe) : null
+
+                        const weightForVideo = !Number.isNaN(draftWeight) && draftWeight > 0 ? draftWeight : set.weight
+                        const repsForVideo = !Number.isNaN(draftReps) && draftReps > 0 ? draftReps : set.reps
+                        const rpeForVideo = draftRpe != null && !Number.isNaN(draftRpe) ? draftRpe : set.rpe
+
+                        return (
+                          <>
                       <div className="grid grid-cols-[22px_minmax(0,1fr)_minmax(0,1fr)_64px_36px] items-center gap-2">
                         <span className="text-xs font-medium text-zinc-400">{index + 1}</span>
 
@@ -745,9 +757,9 @@ export default function WorkoutSession({
                         setId={set.id}
                         workoutId={workoutId}
                         exerciseName={exerciseName}
-                        weight={set.weight}
-                        reps={set.reps}
-                        rpe={set.rpe}
+                        weight={weightForVideo}
+                        reps={repsForVideo}
+                        rpe={rpeForVideo}
                         oneRepMax={getOneRepMax(exerciseName, liftOneRepMaxes)}
                         initialVideoUrl={set.video_url}
                         onOpenReel={() => openReelAtSet(set.id)}
@@ -755,6 +767,9 @@ export default function WorkoutSession({
                           setSets((prev) => prev.map((s) => (s.id === set.id ? { ...s, video_url: url } : s)))
                         }}
                       />
+                          </>
+                        )
+                      })()}
                     </li>
                   ))}
                 </ul>
