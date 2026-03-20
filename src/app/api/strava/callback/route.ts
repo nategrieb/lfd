@@ -33,9 +33,12 @@ export async function GET(request: NextRequest) {
   const token = await tokenRes.json() as {
     access_token:  string
     refresh_token: string
-    expires_at:    number           // Unix timestamp
+    expires_at:    number
+    scope?:        string
     athlete:       { id: number }
   }
+
+  console.log('[strava/callback] granted scope:', token.scope)
 
   // Persist tokens against the logged-in user
   const supabase = await createServerSupabase()

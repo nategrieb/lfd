@@ -31,7 +31,7 @@ export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isAuthPage = pathname.startsWith('/login')
   const isOnboarding = pathname.startsWith('/onboarding')
-  const isPublic = pathname.startsWith('/w/')
+  const isPublic = pathname.startsWith('/w/') || pathname.startsWith('/api/strava/')
 
   // 1. Unauthenticated — send to login (except public auth pages)
   if (!user && !isAuthPage && !isPublic) {
