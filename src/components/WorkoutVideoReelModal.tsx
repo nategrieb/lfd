@@ -20,6 +20,7 @@ export default function WorkoutVideoReelModal({ clips, initialIndex = 0, onClose
   const [activeIndex, setActiveIndex] = useState(() => Math.max(0, Math.min(initialIndex, clips.length - 1)))
   const [mounted, setMounted] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const sectionRefs = useRef<Array<HTMLElement | null>>([])
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({})
   const touchStartY = useRef(0)
 
@@ -33,32 +34,27 @@ export default function WorkoutVideoReelModal({ clips, initialIndex = 0, onClose
     const container = containerRef.current
     if (!container) return
     const clamped = clampIndex(idx)
-    const top = clamped * container.clientHeight
-    container.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' })
+    const section = sectionRefs.current[clamped]
+    if (section) {
+      section.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' })
+    } else {
+      const top = clamped * container.clientHeight
+      container.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' })
+    }
     setActiveIndex(clamped)
   }, [clampIndex])
 
   const ensureInitialPosition = useCallback((idx: number) => {
-    let attempts = 0
     const clamped = clampIndex(idx)
-    const tryPosition = () => {
-      const container = containerRef.current
-      attempts += 1
-      if (!container) return
+    setActiveIndex(clamped)
 
-      if (container.clientHeight > 0) {
-        container.scrollTo({ top: clamped * container.clientHeight, behavior: 'auto' })
-        setActiveIndex(clamped)
-        return
-      }
-
-      if (attempts < 8) {
-        requestAnimationFrame(tryPosition)
-      }
-    }
-
-    requestAnimationFrame(tryPosition)
-  }, [clampIndex])
+    // Two-pass positioning avoids race conditions where the first layout pass
+    // snaps back to index 0 before section heights are fully settled.
+    requestAnimationFrame(() => {
+      scrollToIndex(clamped, false)
+      setTimeout(() => scrollToIndex(clamped, false), 80)
+    })
+  }, [clampIndex, scrollToIndex])
 
   const goNext = useCallback(() => {
     if (activeIndex < clipCount - 1) scrollToIndex(activeIndex + 1)
@@ -156,7 +152,11 @@ export default function WorkoutVideoReelModal({ clips, initialIndex = 0, onClose
 
       <div ref={containerRef} className="h-full snap-y snap-mandatory overflow-y-auto">
         {clips.map((clip, i) => (
-          <section key={clip.id} className="relative flex h-screen snap-start items-center justify-center px-2">
+          <section
+            key={clip.id}
+            ref={(el) => { sectionRefs.current[i] = el }}
+            className="relative flex h-screen snap-start items-center justify-center px-2"
+          >
             <video
               ref={(el) => { videoRefs.current[clip.id] = el }}
               src={clip.src}

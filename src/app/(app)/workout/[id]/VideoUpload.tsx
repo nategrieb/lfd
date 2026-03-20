@@ -98,7 +98,7 @@ function renderOverlayPng(
     const edgePad = Math.max(12, Math.round(Math.min(W, H) * 0.018))
     const CORNER = Math.max(34, Math.round(Math.min(W, H) * 0.058))
     const cornerX = W - CORNER - edgePad
-    const cornerY = edgePad
+    const cornerY = H - CORNER - edgePad
     const cornerGrad = ctx.createLinearGradient(cornerX, cornerY, cornerX + CORNER, cornerY + CORNER)
     cornerGrad.addColorStop(0, GREEN_DARK)
     cornerGrad.addColorStop(1, GREEN_MID)
