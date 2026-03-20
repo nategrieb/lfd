@@ -4,6 +4,7 @@ import Link from 'next/link'
 import DeleteWorkoutButton from './DeleteWorkoutButton'
 import SummarySetsSection, { type SummarySet } from './SummarySetsSection'
 import { canonicalName } from '@/lib/lifts'
+import { formatCardioDistance, formatCardioDuration } from '@/lib/feed'
 import ShareButton from './ShareButton'
 import SyncToStravaButton from './SyncToStravaButton'
 
@@ -32,7 +33,7 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
 
   const { data: sets } = await supabase
     .from('sets')
-    .select('id, exercise_name, weight, reps, rpe, video_url, created_at')
+    .select('id, exercise_name, weight, reps, rpe, video_url, created_at, distance_m, duration_seconds')
     .eq('workout_id', workoutId)
     .order('created_at', { ascending: true })
 
@@ -71,7 +72,12 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
     }
   }
 
-  const totalVolume = (sets ?? []).reduce((acc: number, s: { weight: number; reps: number }) => acc + s.weight * s.reps, 0)
+  const allSets = (sets ?? []) as SummarySet[]
+  const strengthSets = allSets.filter(s => !((s.distance_m ?? 0) > 0 || ((s.duration_seconds ?? 0) > 0 && s.weight === 0 && s.reps === 0)))
+  const cardioSets = allSets.filter(s => (s.distance_m ?? 0) > 0 || ((s.duration_seconds ?? 0) > 0 && s.weight === 0 && s.reps === 0))
+  const totalVolume = strengthSets.reduce((acc: number, s) => acc + s.weight * s.reps, 0)
+  const totalDistanceM = cardioSets.reduce((acc: number, s) => acc + (s.distance_m ?? 0), 0)
+  const totalCardioSeconds = cardioSets.reduce((acc: number, s) => acc + (s.duration_seconds ?? 0), 0)
 
   return (
     <div className="mx-auto max-w-lg px-5 py-8">
@@ -113,10 +119,22 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
         )}
       </div>
 
-      {totalVolume > 0 && (
-          <div className="mb-6 rounded-2xl border border-zinc-100 bg-white p-4 text-center shadow-sm">
-          <p className="text-3xl font-bold text-zinc-900">{new Intl.NumberFormat('en-US').format(totalVolume)} lbs</p>
-          <p className="text-xs text-zinc-400">Total volume</p>
+      {(totalVolume > 0 || totalDistanceM > 0) && (
+        <div className="mb-6 rounded-2xl border border-zinc-100 bg-white p-4 text-center shadow-sm">
+          {totalVolume > 0 && (
+            <>
+              <p className="text-3xl font-bold text-zinc-900">{new Intl.NumberFormat('en-US').format(totalVolume)} lbs</p>
+              <p className="text-xs text-zinc-400">Total volume</p>
+            </>
+          )}
+          {totalDistanceM > 0 && (
+            <>
+              <p className={`text-3xl font-bold text-zinc-900${totalVolume > 0 ? ' mt-3' : ''}`}>
+                {formatCardioDistance(totalDistanceM)}{totalCardioSeconds > 0 ? ` · ${formatCardioDuration(totalCardioSeconds)}` : ''}
+              </p>
+              <p className="text-xs text-zinc-400">Total distance</p>
+            </>
+          )}
         </div>
       )}
 

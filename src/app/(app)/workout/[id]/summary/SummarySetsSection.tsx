@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import WorkoutVideoReelModal from '@/components/WorkoutVideoReelModal'
 import { nameToSlug } from '@/lib/lifts'
+import { isCardioSet, formatCardioDistance, formatCardioDuration } from '@/lib/feed'
 
 export type SummarySet = {
   id: string
@@ -13,6 +14,8 @@ export type SummarySet = {
   rpe: number | null
   video_url: string | null
   created_at: string
+  distance_m?: number | null
+  duration_seconds?: number | null
 }
 
 type Props = {
@@ -32,7 +35,12 @@ export default function SummarySetsSection({ grouped, prBadges }: Props) {
           id: set.id,
           src: set.video_url,
           title: `${exercise} · Set ${i + 1}`,
-          subtitle: `${set.weight} lbs × ${set.reps}${set.rpe != null ? ` · RPE ${set.rpe}` : ''}`,
+          subtitle: isCardioSet(set)
+            ? [
+                set.distance_m ? formatCardioDistance(set.distance_m) : null,
+                set.duration_seconds ? formatCardioDuration(set.duration_seconds) : null,
+              ].filter(Boolean).join(' · ')
+            : `${set.weight} lbs × ${set.reps}${set.rpe != null ? ` · RPE ${set.rpe}` : ''}`,
         })
       })
     }
@@ -71,11 +79,22 @@ export default function SummarySetsSection({ grouped, prBadges }: Props) {
                 {/* Set number */}
                 <span className="w-10 shrink-0 text-zinc-500">Set {i + 1}</span>
 
-                {/* Weight × reps */}
+                {/* Set stats */}
                 <span className="flex-1">
-                  {set.weight} lbs × {set.reps}
-                  {set.rpe !== null && (
-                    <span className="ml-2 text-xs text-zinc-500">RPE {set.rpe}</span>
+                  {isCardioSet(set) ? (
+                    <span className="font-medium text-zinc-800">
+                      {[
+                        set.distance_m ? formatCardioDistance(set.distance_m) : null,
+                        set.duration_seconds ? formatCardioDuration(set.duration_seconds) : null,
+                      ].filter(Boolean).join(' · ')}
+                    </span>
+                  ) : (
+                    <>
+                      {set.weight} lbs × {set.reps}
+                      {set.rpe !== null && (
+                        <span className="ml-2 text-xs text-zinc-500">RPE {set.rpe}</span>
+                      )}
+                    </>
                   )}
                 </span>
 

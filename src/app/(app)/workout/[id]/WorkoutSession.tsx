@@ -10,6 +10,7 @@ import FinishWorkoutSheet from './FinishWorkoutSheet'
 import { createClient } from '@/lib/supabase'
 import { nameToSlug } from '@/lib/lifts'
 import { formatTempo, formatRest } from '@/lib/programs'
+import { isCardioSet, formatCardioDistance, formatCardioDuration } from '@/lib/feed'
 import RestTimer from './RestTimer'
 import WorkoutVideoReelModal from '@/components/WorkoutVideoReelModal'
 
@@ -35,6 +36,8 @@ type WorkoutSet = {
   rpe: number | null
   created_at: string
   video_url: string | null
+  distance_m?: number | null
+  duration_seconds?: number | null
 }
 
 type WorkoutSessionProps = {
@@ -229,7 +232,10 @@ export default function WorkoutSession({
         id: set.id,
         src: set.video_url,
         title: `${set.exercise_name} · Set ${setNum}`,
-        subtitle: `${set.weight} lbs × ${set.reps}${set.rpe != null ? ` · RPE ${set.rpe}` : ''}`,
+        subtitle: isCardioSet(set as any)
+          ? [formatCardioDistance(set.distance_m ?? 0), formatCardioDuration(set.duration_seconds ?? 0)].filter(Boolean).join(' · ')
+          : `${set.weight} lbs × ${set.reps}${set.rpe != null ? ` · RPE ${set.rpe}` : ''}`,
+
       })
     }
     return clips
@@ -241,7 +247,9 @@ export default function WorkoutSession({
   }
 
   const totalSets = sets.length
-  const totalVolume = useMemo(() => sets.reduce((acc, set) => acc + set.weight * set.reps, 0), [sets])
+  const totalVolume = useMemo(() => sets.filter(s => !isCardioSet(s as any)).reduce((acc, set) => acc + set.weight * set.reps, 0), [sets])
+  const totalDistanceM = useMemo(() => sets.filter(s => isCardioSet(s as any)).reduce((acc, s) => acc + (s.distance_m ?? 0), 0), [sets])
+  const totalCardioSeconds = useMemo(() => sets.filter(s => isCardioSet(s as any)).reduce((acc, s) => acc + (s.duration_seconds ?? 0), 0), [sets])
   const formattedVolume = useMemo(() => new Intl.NumberFormat('en-US').format(totalVolume), [totalVolume])
 
   const handleSetAdded = (set: WorkoutSet) => {
@@ -932,7 +940,12 @@ export default function WorkoutSession({
           <div className="mb-3 rounded-lg bg-zinc-100 px-4 py-3 text-sm text-zinc-700">{message}</div>
         )}
         <p className="text-sm text-zinc-500">Workout total</p>
-        <p className="text-3xl font-semibold text-zinc-900">{formattedVolume} lbs</p>
+        {totalVolume > 0 && (
+          <p className="text-3xl font-semibold text-zinc-900">{formattedVolume} lbs</p>
+        )}
+        {totalDistanceM > 0 && (
+          <p className="text-3xl font-semibold text-zinc-900">{formatCardioDistance(totalDistanceM)}{totalCardioSeconds > 0 ? ` · ${formatCardioDuration(totalCardioSeconds)}` : ''}</p>
+        )}
         <p className="text-xs text-zinc-400">{totalSets} set{totalSets === 1 ? '' : 's'}</p>
 
         {workoutStatus === 'in_progress' ? (
