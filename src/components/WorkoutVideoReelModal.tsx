@@ -180,19 +180,6 @@ export default function WorkoutVideoReelModal({ clips, initialIndex = 0, onClose
         ))}
       </div>
 
-      {activeClip && (
-        <div
-          className="pointer-events-none absolute left-4 right-4 z-20"
-          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 56px)' }}
-        >
-          <div className="rounded-xl bg-black/55 px-3 py-2.5 backdrop-blur">
-            <p className="truncate text-sm font-semibold text-white">{activeClip.title}</p>
-            {activeClip.subtitle ? (
-              <p className="mt-0.5 truncate text-xs text-zinc-200">{activeClip.subtitle}</p>
-            ) : null}
-          </div>
-        </div>
-      )}
     </div>
   )
 
