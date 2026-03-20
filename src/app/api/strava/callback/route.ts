@@ -7,6 +7,9 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
   const code  = searchParams.get('code')
   const error = searchParams.get('error')
+  const scope = searchParams.get('scope')
+
+  console.log('[strava/callback] granted scope:', scope)
 
   const redirectBase = `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/settings/integrations`
 
@@ -34,11 +37,8 @@ export async function GET(request: NextRequest) {
     access_token:  string
     refresh_token: string
     expires_at:    number
-    scope?:        string
     athlete:       { id: number }
   }
-
-  console.log('[strava/callback] granted scope:', token.scope)
 
   // Persist tokens against the logged-in user
   const supabase = await createServerSupabase()
