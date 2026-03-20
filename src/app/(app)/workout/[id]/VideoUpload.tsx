@@ -337,7 +337,7 @@ export default function VideoUpload({
         '-preset', 'fast',
         '-crf', '23',
         '-pix_fmt', 'yuv420p',
-        '-an',
+        '-c:a', 'copy',
         '-movflags', '+faststart',
         'output.mp4',
       ])
