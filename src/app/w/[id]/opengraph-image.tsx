@@ -145,100 +145,14 @@ export default async function Image({ params }: { params: Promise<{ id: string }
       firstVideoSet?.thumbnail_url ??
       (firstVideoSet?.video_url ? deriveThumbFromVideoUrl(firstVideoSet.video_url) : null)
 
-    // ─── VIDEO CARD: green strip at TOP (iMessage crops bottom, never top) ──
+    // ─── VIDEO CARD: pure thumbnail — burn-in branding from FFmpeg is enough ──
     if (thumbUrl) {
-      const statLine = topS
-        ? `${topS.weight} lbs × ${topS.reps}${topS.rpe != null ? `  ·  RPE ${topS.rpe}` : ''}`
-        : `${volumeStr} lbs total`
-
-      const STRIP_H = 112
-
       return new ImageResponse(
-        <div
-          style={{
-            width: 1200,
-            height: 630,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            background: '#000',
-          }}
-        >
-          {/* ── British Racing Green strip at the TOP ── */}
-          <div
-            style={{
-              width: 1200,
-              height: STRIP_H,
-              flexShrink: 0,
-              background: 'linear-gradient(90deg, #14532d 0%, #166534 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0 52px',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-              <LfdBadge size={68} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span
-                  style={{
-                    color: 'white',
-                    fontSize: 30,
-                    fontWeight: 800,
-                    letterSpacing: '-0.5px',
-                    lineHeight: 1,
-                    fontFamily: 'Noto, sans-serif',
-                  }}
-                >
-                  {workoutName}
-                </span>
-                <span
-                  style={{
-                    color: 'rgba(255,255,255,0.7)',
-                    fontSize: 22,
-                    fontWeight: 700,
-                    lineHeight: 1,
-                    fontFamily: 'Noto, sans-serif',
-                  }}
-                >
-                  {displayName}
-                </span>
-              </div>
-            </div>
-            <span
-              style={{
-                color: 'rgba(255,255,255,0.9)',
-                fontSize: 26,
-                fontWeight: 700,
-                fontFamily: 'Noto, sans-serif',
-              }}
-            >
-              {statLine}
-            </span>
-          </div>
-
-          {/* ── Thumbnail fills the remaining height ── */}
-          <div
-            style={{
-              flex: 1,
-              display: 'flex',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            <img
-              src={thumbUrl}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                objectPosition: 'center top',
-              }}
-            />
-          </div>
+        <div style={{ width: 1200, height: 630, display: 'flex', background: '#000' }}>
+          <img
+            src={thumbUrl}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
+          />
         </div>,
         { width: 1200, height: 630, fonts },
       )
