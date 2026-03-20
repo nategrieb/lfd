@@ -1,10 +1,18 @@
 import { notFound } from 'next/navigation'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
 import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
 
 type Props = { params: Promise<{ id: string }> }
+
+// Public anon client — no cookies needed, works for unauthenticated visitors.
+function anonSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+  )
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -29,13 +37,13 @@ function topSet(sets: SetRow[]): SetRow | null {
 }
 
 async function fetchWorkoutData(id: string) {
-  const supabase = await createServerSupabase()
+  const supabase = anonSupabase()
 
   const { data: workout } = await supabase
     .from('workouts')
     .select('id, name, created_at, user_id')
     .eq('id', id)
-    .single()
+    .maybeSingle()
 
   if (!workout) return null
 
