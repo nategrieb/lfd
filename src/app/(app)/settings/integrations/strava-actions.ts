@@ -134,6 +134,9 @@ export async function syncWorkoutToStrava(
     description,
   }
 
+  console.log('[strava/sync] token prefix:', accessToken.slice(0, 8))
+  console.log('[strava/sync] body:', JSON.stringify(body, null, 2))
+
   const stravaRes = await fetch('https://www.strava.com/api/v3/activities', {
     method: 'POST',
     headers: {
@@ -144,12 +147,15 @@ export async function syncWorkoutToStrava(
     cache: 'no-store',
   })
 
+  const msg = await stravaRes.text()
+  console.log('[strava/sync] response status:', stravaRes.status)
+  console.log('[strava/sync] response body:', msg)
+
   if (!stravaRes.ok) {
-    const msg = await stravaRes.text()
     return { error: `Strava error ${stravaRes.status}: ${msg}` }
   }
 
-  const activity = await stravaRes.json() as { id: number }
+  const activity = JSON.parse(msg) as { id: number }
   return { success: true, stravaId: activity.id }
 }
 
