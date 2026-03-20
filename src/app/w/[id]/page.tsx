@@ -126,7 +126,7 @@ export default async function PublicWorkoutPage({ params }: Props) {
     <div className="min-h-screen bg-zinc-50">
       {/* ── Hero video ───────────────────────────────────────── */}
       {hero?.video_url ? (
-        <div className="relative w-full bg-black" style={{ maxHeight: '60dvh' }}>
+        <div className="relative w-full bg-black">
           {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
           <video
             src={hero.video_url}
@@ -135,8 +135,8 @@ export default async function PublicWorkoutPage({ params }: Props) {
             autoPlay
             muted
             loop
-            className="mx-auto block w-full object-contain"
-            style={{ maxHeight: '60dvh' }}
+            className="block w-full"
+            style={{ maxHeight: '85dvh', objectFit: 'contain' }}
           />
           {/* exercise badge */}
           <div className="absolute bottom-4 left-4 rounded-xl bg-black/50 px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-sm">

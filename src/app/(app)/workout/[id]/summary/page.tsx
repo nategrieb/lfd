@@ -5,6 +5,7 @@ import DeleteWorkoutButton from './DeleteWorkoutButton'
 import SummarySetsSection, { type SummarySet } from './SummarySetsSection'
 import { canonicalName } from '@/lib/lifts'
 import ShareButton from './ShareButton'
+import SyncToStravaButton from './SyncToStravaButton'
 
 export default async function WorkoutSummaryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: workoutId } = await params
@@ -42,12 +43,14 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
     return acc
   }, {})
 
-  // Fetch current profile PRs
+  // Fetch current profile PRs + Strava connection status
   const { data: profile } = await supabase
     .from('profiles')
-    .select('squat_1rm, bench_1rm, deadlift_1rm')
+    .select('squat_1rm, bench_1rm, deadlift_1rm, strava_athlete_id')
     .eq('id', user.id)
     .single()
+
+  const isStravaConnected = !!profile?.strava_athlete_id
 
   // Compute maxes for PR exercises — match by canonical name so all squat
   // variants ('Squat', 'Back Squat', 'Squat (Barbell)', etc.) are caught.
@@ -141,6 +144,9 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
       <SummarySetsSection grouped={grouped} prBadges={prBadges} />
       <div className="mt-8 flex flex-col gap-3">
         <ShareButton workoutId={workout.id} />
+        {isOwner && isStravaConnected && (
+          <SyncToStravaButton workoutId={workout.id} />
+        )}
         <div className="flex gap-3">
           <Link
             href={isOwner ? '/history' : '/'}
