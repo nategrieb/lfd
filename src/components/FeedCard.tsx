@@ -39,7 +39,7 @@ function VideoSlide({ url, label, onOpen }: { url: string; label: string; onOpen
     >
       <video
         src={url}
-        className="h-full w-full object-cover"
+        className="h-full w-full object-cover object-top"
         preload="metadata"
         muted
         playsInline
