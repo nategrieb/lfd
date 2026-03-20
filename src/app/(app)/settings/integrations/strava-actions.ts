@@ -71,59 +71,66 @@ export async function syncWorkoutToStrava(
   const accessToken = await getFreshAccessToken(user.id)
   if (!accessToken) return { error: 'Strava not connected' }
 
-  // Fetch workout + sets
+  // Fetch workout (includes location)
   const { data: workout } = await supabase
     .from('workouts')
-    .select('id, name, created_at')
+    .select('id, name, created_at, location')
     .eq('id', workoutId)
     .eq('user_id', user.id)
     .single()
 
   if (!workout) return { error: 'Workout not found' }
 
+  // Fetch all sets in order, including rpe and thumbnail for photo upload
   const { data: sets } = await supabase
     .from('sets')
-    .select('exercise_name, weight, reps')
+    .select('exercise_name, weight, reps, rpe, thumbnail_url')
     .eq('workout_id', workoutId)
     .order('created_at', { ascending: true })
 
   const allSets = sets ?? []
-
-  // Build top sets per exercise (highest weight)
-  const topByExercise = allSets.reduce(
-    (acc: Record<string, { weight: number; reps: number }>, s) => {
-      const prev = acc[s.exercise_name]
-      if (!prev || s.weight > prev.weight) {
-        acc[s.exercise_name] = { weight: s.weight, reps: s.reps }
-      }
-      return acc
-    },
-    {},
-  )
-
   const totalVolume = allSets.reduce((acc, s) => acc + s.weight * s.reps, 0)
 
-  const topSetsStr = Object.entries(topByExercise)
-    .map(([name, s]) => `${name} ${s.weight}x${s.reps}`)
-    .join(' | ')
+  // Group sets by exercise, preserving first-appearance order
+  const exerciseOrder: string[] = []
+  const setsByExercise: Record<string, Array<{ weight: number; reps: number; rpe: number | null }>> = {}
+  for (const s of allSets) {
+    if (!setsByExercise[s.exercise_name]) {
+      exerciseOrder.push(s.exercise_name)
+      setsByExercise[s.exercise_name] = []
+    }
+    setsByExercise[s.exercise_name].push({ weight: s.weight, reps: s.reps, rpe: s.rpe ?? null })
+  }
+
+  const setsBlock = exerciseOrder.map((name) => {
+    const lines = setsByExercise[name].map((s) => {
+      const rpePart = s.rpe != null ? `  (RPE ${s.rpe})` : ''
+      return `  ${s.weight} lbs × ${s.reps}${rpePart}`
+    })
+    return `${name.toUpperCase()}\n${lines.join('\n')}`
+  }).join('\n\n')
 
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? ''
   const shareLink = `${base}/w/${workoutId}`
+  const locationPart = workout.location ? `  ·  ${workout.location}` : ''
+  const workoutName = workout.name?.trim() || 'Weight Training'
 
   const description = [
-    `Total Volume: ${new Intl.NumberFormat('en-US').format(totalVolume)} lbs`,
-    topSetsStr ? `Top Sets: ${topSetsStr}` : null,
-    shareLink,
-  ]
-    .filter(Boolean)
-    .join('\n')
+    `🏋 ${workoutName}${locationPart}`,
+    '',
+    setsBlock,
+    '',
+    `📊 Total Volume: ${new Intl.NumberFormat('en-US').format(totalVolume)} lbs`,
+    '',
+    `🔗 Full workout: ${shareLink}`,
+  ].join('\n')
 
   const body = {
-    name:            workout.name?.trim() || 'Weight Training',
-    type:            'WeightTraining',
-    sport_type:      'WeightTraining',
+    name:             workoutName,
+    type:             'WeightTraining',
+    sport_type:       'WeightTraining',
     start_date_local: new Date(workout.created_at).toISOString(),
-    elapsed_time:    3600, // placeholder — workouts table doesn't store duration yet
+    elapsed_time:     3600,
     description,
   }
 
@@ -143,6 +150,28 @@ export async function syncWorkoutToStrava(
   }
 
   const activity = await stravaRes.json() as { id: number }
+
+  // Best-effort: upload the first available set thumbnail as a Strava photo
+  const firstThumb = allSets.find((s) => s.thumbnail_url)?.thumbnail_url
+  if (firstThumb) {
+    try {
+      const imgRes = await fetch(firstThumb, { cache: 'no-store' })
+      if (imgRes.ok) {
+        const imgBlob = await imgRes.blob()
+        const form = new FormData()
+        form.append('file', imgBlob, 'thumbnail.jpg')
+        await fetch(`https://www.strava.com/api/v3/activities/${activity.id}/photos`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          body: form,
+          cache: 'no-store',
+        })
+      }
+    } catch {
+      // Photo upload is non-critical — activity was already created
+    }
+  }
+
   return { success: true, stravaId: activity.id }
 }
 

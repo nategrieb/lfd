@@ -1,12 +1,13 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { addSet, cancelWorkoutDraft, deleteSet, finishWorkout, updateSet, updateWorkoutName } from '../actions'
+import { addSet, cancelWorkoutDraft, deleteSet, finishWorkout, updateSet, updateWorkoutDetails, updateWorkoutName } from '../actions'
 import AddSetForm from './AddSetForm'
 import VideoUpload from './VideoUpload'
 import FinishWorkoutSheet from './FinishWorkoutSheet'
+import { createClient } from '@/lib/supabase'
 import { nameToSlug } from '@/lib/lifts'
 import { formatTempo, formatRest } from '@/lib/programs'
 import RestTimer from './RestTimer'
@@ -43,6 +44,8 @@ type WorkoutSessionProps = {
   initialSets: WorkoutSet[]
   liftOneRepMaxes: Record<string, number>
   scheduledSets?: ScheduledSet[]
+  initialLocation?: string | null
+  initialPostPhotos?: string[] | null
 }
 
 type PendingSet = {
@@ -112,6 +115,8 @@ export default function WorkoutSession({
   initialSets,
   liftOneRepMaxes,
   scheduledSets,
+  initialLocation,
+  initialPostPhotos,
 }: WorkoutSessionProps) {
   // Build a map from canonical lowercase exercise name → all scheduled set groups (in order)
   const scheduledSetGroupsMap = useMemo(() => {
@@ -176,6 +181,30 @@ export default function WorkoutSession({
   const [message, setMessage] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [showFinishSheet, setShowFinishSheet] = useState(false)
+  const [lastAddedExercise, setLastAddedExercise] = useState<string | null>(null)
+  const [draftLocation, setDraftLocation] = useState(initialLocation ?? '')
+  const [existingPhotos, setExistingPhotos] = useState<string[]>(initialPostPhotos ?? [])
+  const [newPhotoFiles, setNewPhotoFiles] = useState<File[]>([])
+  const [newPhotoPreviews, setNewPhotoPreviews] = useState<string[]>([])
+  const photoInputRef = useRef<HTMLInputElement>(null)
+
+  const removeExistingPhoto = (index: number) => {
+    setExistingPhotos((prev) => prev.filter((_, i) => i !== index))
+  }
+  const removeNewPhoto = (index: number) => {
+    const next = newPhotoFiles.filter((_, i) => i !== index)
+    setNewPhotoFiles(next)
+    setNewPhotoPreviews(next.map((f) => URL.createObjectURL(f)))
+  }
+  const handleNewPhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const incoming = Array.from(e.target.files ?? [])
+    if (!incoming.length) return
+    const maxNew = 5 - existingPhotos.length
+    const combined = [...newPhotoFiles, ...incoming].slice(0, maxNew)
+    setNewPhotoFiles(combined)
+    setNewPhotoPreviews(combined.map((f) => URL.createObjectURL(f)))
+    e.target.value = ''
+  }
 
   const groupedSets = useMemo(() => {
     return sets.reduce<Record<string, WorkoutSet[]>>((acc, set) => {
@@ -239,6 +268,7 @@ export default function WorkoutSession({
 
     setExerciseOrder((prev) => [...prev, trimmed])
     setNewExerciseName('')
+    setLastAddedExercise(trimmed)
 
     // Bring the new exercise card into view so the user can log sets immediately.
     setTimeout(() => {
@@ -351,7 +381,43 @@ export default function WorkoutSession({
       }
     }
 
-    setMessage(changedSetIds.length > 0 || nextName !== workoutName ? 'Changes saved.' : 'No changes to save.')
+    if (workoutStatus === 'completed') {
+      const uploadedUrls: string[] = []
+      if (newPhotoFiles.length > 0) {
+        const supabase = createClient()
+        const timestamp = Date.now()
+        for (let i = 0; i < newPhotoFiles.length; i++) {
+          const file = newPhotoFiles[i]
+          const ext = file.name.split('.').pop() ?? 'jpg'
+          const path = `${userId}/${workoutId}/${timestamp}-${i}.${ext}`
+          const { error: uploadError } = await supabase.storage
+            .from('workout-post-photos')
+            .upload(path, file, { upsert: true, contentType: file.type })
+          if (!uploadError) {
+            const { data: urlData } = supabase.storage
+              .from('workout-post-photos')
+              .getPublicUrl(path)
+            uploadedUrls.push(urlData.publicUrl)
+          }
+        }
+      }
+      const allPhotos = [...existingPhotos, ...uploadedUrls]
+      const detailsResult = await updateWorkoutDetails({
+        workoutId,
+        location: draftLocation.trim() || null,
+        postPhotos: allPhotos,
+      })
+      if (!detailsResult.success) {
+        setMessage(detailsResult.message ?? 'Failed to save details.')
+        setTimeout(() => setMessage(null), 2500)
+        return false
+      }
+      setNewPhotoFiles([])
+      setNewPhotoPreviews([])
+      setExistingPhotos(allPhotos)
+    }
+
+    setMessage('Changes saved.')
     setTimeout(() => setMessage(null), 2500)
     return true
   }
@@ -361,15 +427,6 @@ export default function WorkoutSession({
       const ok = await persistAllChanges()
       if (ok) {
         router.push(`/workout/${workoutId}/summary`)
-      }
-    })
-  }
-
-  const handleGoHistory = () => {
-    startTransition(async () => {
-      const ok = await persistAllChanges()
-      if (ok) {
-        router.push('/history')
       }
     })
   }
@@ -413,6 +470,94 @@ export default function WorkoutSession({
           />
         </div>
       </div>
+
+      {workoutStatus === 'completed' && (
+        <div className="rounded-xl border border-zinc-100 bg-white p-4 shadow-sm">
+          <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-zinc-400">Details</p>
+
+          {/* Location */}
+          <div className="mb-5">
+            <label className="mb-1.5 block text-sm font-semibold text-zinc-800">Location</label>
+            <div className="relative">
+              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-zinc-400">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                  <path fillRule="evenodd" d="M9.69 18.933l.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 00.281-.145 13.39 13.39 0 002.206-1.72C14.047 15.497 16 12.51 16 9.5a6 6 0 00-12 0c0 3.01 1.953 5.998 3.168 7.307a13.39 13.39 0 002.523 1.865zm-.004-12.183a2.25 2.25 0 113.182 3.182 2.25 2.25 0 01-3.182-3.182z" clipRule="evenodd" />
+                </svg>
+              </span>
+              <input
+                type="text"
+                value={draftLocation}
+                onChange={(e) => setDraftLocation(e.target.value)}
+                placeholder="Gym, home gym, etc."
+                maxLength={100}
+                className="w-full rounded-xl border border-zinc-200 bg-white py-2.5 pl-9 pr-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-green-700"
+              />
+            </div>
+          </div>
+
+          {/* Photos */}
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-zinc-800">Photos</label>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="sr-only"
+              onChange={handleNewPhotoAdd}
+            />
+            <div className="grid grid-cols-3 gap-2">
+              {existingPhotos.map((src, i) => (
+                <div key={src} className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={src} alt={`Photo ${i + 1}`} className="aspect-square w-full rounded-xl object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => removeExistingPhoto(i)}
+                    aria-label="Remove photo"
+                    className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-zinc-800 text-white shadow-md hover:bg-rose-600"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                      <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+              {newPhotoPreviews.map((src, i) => (
+                <div key={`new-${i}`} className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={src} alt={`New photo ${i + 1}`} className="aspect-square w-full rounded-xl object-cover opacity-80 ring-2 ring-green-400" />
+                  <button
+                    type="button"
+                    onClick={() => removeNewPhoto(i)}
+                    aria-label="Remove photo"
+                    className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-zinc-800 text-white shadow-md hover:bg-rose-600"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                      <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+              {existingPhotos.length + newPhotoFiles.length < 5 && (
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  className="flex aspect-square items-center justify-center rounded-xl border-2 border-dashed border-zinc-200 text-zinc-400 hover:border-green-400 hover:text-green-600 transition-colors"
+                  aria-label="Add photo"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-6 w-6" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            {existingPhotos.length + newPhotoFiles.length >= 5 && (
+              <p className="mt-1.5 text-xs text-zinc-400">Maximum 5 photos</p>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="mt-6 space-y-4">
         <p className="text-xs text-zinc-400">Add sets inside each exercise card below.</p>
@@ -672,7 +817,9 @@ export default function WorkoutSession({
                   exerciseName={exerciseName}
                   defaultWeight={latestSet?.weight ?? undefined}
                   defaultReps={latestSet?.reps ?? undefined}
-                  onAdded={(set) => handleSetAdded({ ...set, video_url: null })}
+                  defaultRpe={latestSet?.rpe ?? undefined}
+                  autoOpen={lastAddedExercise === exerciseName}
+                  onAdded={(set) => { handleSetAdded({ ...set, video_url: null }); setLastAddedExercise(null) }}
                 />
               </div>
             </div>
@@ -683,6 +830,20 @@ export default function WorkoutSession({
         )}
 
         <div className="sticky bottom-24 z-20 rounded-xl border border-zinc-100 bg-white/95 p-3 shadow-sm backdrop-blur">
+          {workoutStatus === 'completed' && (
+            <>
+              <button
+                type="button"
+                onClick={handleDoneEditing}
+                disabled={isPending}
+                className="mb-3 w-full rounded-xl py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
+              >
+                {isPending ? 'Saving…' : 'Done Editing'}
+              </button>
+              <div className="mb-3 h-px bg-zinc-100" />
+            </>
+          )}
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Add Exercise</p>
           <div className="mt-2 flex items-center gap-2">
             <input
@@ -715,13 +876,10 @@ export default function WorkoutSession({
         </div>
       </div>
 
-      <div className="mt-8">
-        {message ? (
-          <div className="rounded-lg bg-zinc-100 px-4 py-3 text-sm text-zinc-700">{message}</div>
-        ) : null}
-      </div>
-
-      <div className="mt-6 border-t border-zinc-100 pt-4">
+      <div className="mt-4 border-t border-zinc-100 pt-4">
+        {message && (
+          <div className="mb-3 rounded-lg bg-zinc-100 px-4 py-3 text-sm text-zinc-700">{message}</div>
+        )}
         <p className="text-sm text-zinc-500">Workout total</p>
         <p className="text-3xl font-semibold text-zinc-900">{formattedVolume} lbs</p>
         <p className="text-xs text-zinc-400">{totalSets} set{totalSets === 1 ? '' : 's'}</p>
@@ -749,29 +907,7 @@ export default function WorkoutSession({
               ) : null}
             </div>
           </div>
-        ) : (
-          <div className="mt-6 flex items-center justify-between gap-3">
-            <p className="text-xs text-zinc-400">Changes will be saved when you leave this page.</p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleDoneEditing}
-                disabled={isPending}
-                className="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50"
-              >
-                {isPending ? 'Saving…' : 'Done Editing'}
-              </button>
-              <button
-                type="button"
-                onClick={handleGoHistory}
-                disabled={isPending}
-                className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-100"
-              >
-                {isPending ? 'Saving…' : 'History'}
-              </button>
-            </div>
-          </div>
-        )}
+        ) : null}
       </div>
     </>
   )

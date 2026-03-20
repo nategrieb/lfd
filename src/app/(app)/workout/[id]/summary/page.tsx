@@ -147,23 +147,6 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
         {isOwner && isStravaConnected && (
           <SyncToStravaButton workoutId={workout.id} />
         )}
-        <div className="flex gap-3">
-          <Link
-            href={isOwner ? '/history' : '/'}
-            className="flex-1 rounded-xl border border-zinc-200 py-3 text-center text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50"
-          >
-            {isOwner ? 'History' : 'Feed'}
-          </Link>
-          {isOwner && (
-            <Link
-              href="/workout"
-              className="flex-1 rounded-xl py-3 text-center text-sm font-semibold text-white transition hover:opacity-90"
-              style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
-            >
-              New Workout
-            </Link>
-          )}
-        </div>
       </div>
 
       {isOwner && (

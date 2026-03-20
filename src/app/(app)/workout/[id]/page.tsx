@@ -20,7 +20,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
 
   const { data: workout } = await supabase
     .from('workouts')
-    .select('id, status, name')
+    .select('id, status, name, location, post_photos')
     .eq('id', workoutId)
     .eq('user_id', userId)
     .single()
@@ -117,6 +117,8 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
         initialSets={setRows}
         liftOneRepMaxes={liftOneRepMaxes}
         scheduledSets={scheduledSets}
+        initialLocation={(workout as any).location ?? null}
+        initialPostPhotos={(workout as any).post_photos ?? []}
       />
     </div>
   )

@@ -17,7 +17,7 @@ function StravaLogo({ size = 20 }: { size?: number }) {
 
 export function ConnectStravaButton({ clientId, redirectUri }: { clientId: string; redirectUri: string }) {
   const scope = 'activity:write'
-  const url = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&approval_prompt=auto&scope=${scope}`
+  const url = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&approval_prompt=force&scope=${scope}`
 
   return (
     <a

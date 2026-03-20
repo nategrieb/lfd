@@ -25,7 +25,7 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
 import { useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import { saveSetVideoUrl, deleteSetVideoUrl } from '../actions'
+import { saveSetVideoUrl, deleteSetVideoUrl, saveSetThumbnailUrl } from '../actions'
 
 // @ffmpeg/core single-thread build — no SharedArrayBuffer / COOP/COEP needed.
 const CDN = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd'
@@ -189,6 +189,39 @@ function renderOverlayPng(
   })
 }
 
+/**
+ * Seeks to the middle of `videoBlob` and captures a JPEG frame.
+ * Uses the processed (already-branded) video so the thumbnail has the
+ * LFD overlay baked in when it appears on Strava.
+ */
+function captureMiddleFrame(videoBlob: Blob): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video')
+    const url = URL.createObjectURL(videoBlob)
+    video.src = url
+    video.muted = true
+    video.preload = 'metadata'
+    video.onloadedmetadata = () => {
+      video.currentTime = video.duration / 2
+    }
+    video.onseeked = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { URL.revokeObjectURL(url); reject(new Error('Canvas unavailable')); return }
+      ctx.drawImage(video, 0, 0)
+      URL.revokeObjectURL(url)
+      canvas.toBlob(
+        (blob) => blob ? resolve(blob) : reject(new Error('Frame capture failed')),
+        'image/jpeg',
+        0.85,
+      )
+    }
+    video.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Video load failed')) }
+  })
+}
+
 export type VideoUploadProps = {
   setId: string
   workoutId: string
@@ -329,9 +362,27 @@ export default function VideoUpload({
 
       const { data: urlData } = supabase.storage.from('workout-videos').getPublicUrl(storagePath)
 
-      // Persist the URL via a server action (ownership checked server-side).
+      // Persist the video URL via a server action (ownership checked server-side).
       const result = await saveSetVideoUrl({ setId, videoUrl: urlData.publicUrl })
       if (!result.success) throw new Error(result.message)
+
+      // Best-effort: capture mid-frame thumbnail from the branded processed video
+      // and upload it so Strava sync can attach it as a photo.
+      try {
+        const thumbBlob = await captureMiddleFrame(processedBlob)
+        const thumbPath = `${user.id}/${workoutId}/${setId}-thumb.jpg`
+        const { error: thumbErr } = await supabase.storage
+          .from('workout-videos')
+          .upload(thumbPath, thumbBlob, { contentType: 'image/jpeg', upsert: true })
+        if (!thumbErr) {
+          const { data: thumbUrlData } = supabase.storage
+            .from('workout-videos')
+            .getPublicUrl(thumbPath)
+          await saveSetThumbnailUrl({ setId, thumbnailUrl: thumbUrlData.publicUrl })
+        }
+      } catch {
+        // Non-critical — video upload already succeeded
+      }
 
       setStatus({ type: 'done', url: urlData.publicUrl })
     } catch (err) {

@@ -8,6 +8,8 @@ type AddSetFormProps = {
   exerciseName: string
   defaultWeight?: number
   defaultReps?: number
+  defaultRpe?: number | null
+  autoOpen?: boolean
   onAdded?: (set: { id: string; exercise_name: string; weight: number; reps: number; rpe: number | null; created_at: string }) => void
 }
 
@@ -20,13 +22,15 @@ export default function AddSetForm({
   exerciseName,
   defaultWeight,
   defaultReps,
+  defaultRpe,
+  autoOpen,
   onAdded,
 }: AddSetFormProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(autoOpen ?? false)
   const [formState, setFormState] = useState({
     weight: asInputValue(defaultWeight),
     reps: asInputValue(defaultReps),
-    rpe: '',
+    rpe: defaultRpe != null ? String(defaultRpe) : '',
   })
   const [message, setMessage] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -36,9 +40,9 @@ export default function AddSetForm({
     setFormState({
       weight: asInputValue(defaultWeight),
       reps: asInputValue(defaultReps),
-      rpe: '',
+      rpe: defaultRpe != null ? String(defaultRpe) : '',
     })
-  }, [exerciseName, defaultWeight, defaultReps])
+  }, [exerciseName, defaultWeight, defaultReps, defaultRpe])
 
   useEffect(() => {
     if (isOpen) weightRef.current?.focus()

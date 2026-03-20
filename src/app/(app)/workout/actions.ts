@@ -360,6 +360,48 @@ export async function saveSetVideoUrl({
   return { success: true }
 }
 
+export async function saveSetThumbnailUrl({
+  setId,
+  thumbnailUrl,
+}: {
+  setId: string
+  thumbnailUrl: string
+}): Promise<{ success: boolean; message?: string }> {
+  if (!setId || !thumbnailUrl) {
+    return { success: false, message: 'Missing set id or thumbnail URL.' }
+  }
+
+  try {
+    const parsed = new URL(thumbnailUrl)
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      return { success: false, message: 'Invalid thumbnail URL.' }
+    }
+  } catch {
+    return { success: false, message: 'Invalid thumbnail URL.' }
+  }
+
+  const supabase = await createServerSupabase()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user?.id) {
+    return { success: false, message: 'Not authenticated.' }
+  }
+
+  const { error } = await supabase
+    .from('sets')
+    .update({ thumbnail_url: thumbnailUrl })
+    .eq('id', setId)
+    .eq('user_id', user.id)
+
+  if (error) {
+    return { success: false, message: error.message }
+  }
+
+  return { success: true }
+}
+
 export async function deleteSetVideoUrl(
   setId: string,
 ): Promise<{ success: boolean; message?: string }> {
@@ -463,6 +505,39 @@ export async function finishWorkout(formData: FormData): Promise<void> {
 
   revalidatePath('/', 'layout')
   redirect(`/workout/${workoutId}/summary`)
+}
+
+export async function updateWorkoutDetails({
+  workoutId,
+  location,
+  postPhotos,
+}: {
+  workoutId: string
+  location: string | null
+  postPhotos: string[]
+}): Promise<{ success: boolean; message?: string }> {
+  if (!workoutId) return { success: false, message: 'Missing workout id.' }
+
+  const supabase = await createServerSupabase()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user?.id) return { success: false, message: 'Not authenticated.' }
+
+  const { error } = await supabase
+    .from('workouts')
+    .update({
+      location: location || null,
+      post_photos: postPhotos.length > 0 ? postPhotos : null,
+    })
+    .eq('id', workoutId)
+    .eq('user_id', user.id)
+
+  if (error) return { success: false, message: error.message }
+
+  revalidatePath(`/workout/${workoutId}/summary`)
+  return { success: true }
 }
 
 export async function deleteWorkout({ workoutId }: { workoutId: string }) {
