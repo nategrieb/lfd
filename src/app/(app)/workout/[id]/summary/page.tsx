@@ -4,6 +4,7 @@ import Link from 'next/link'
 import DeleteWorkoutButton from './DeleteWorkoutButton'
 import SummarySetsSection, { type SummarySet } from './SummarySetsSection'
 import { canonicalName } from '@/lib/lifts'
+import ShareButton from './ShareButton'
 
 export default async function WorkoutSummaryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: workoutId } = await params
@@ -138,22 +139,25 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
       })()}
 
       <SummarySetsSection grouped={grouped} prBadges={prBadges} />
-      <div className="mt-8 flex gap-3">
-        <Link
-          href={isOwner ? '/history' : '/'}
-          className="flex-1 rounded-xl border border-zinc-200 py-3 text-center text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50"
-        >
-          {isOwner ? 'History' : 'Feed'}
-        </Link>
-        {isOwner && (
+      <div className="mt-8 flex flex-col gap-3">
+        <ShareButton workoutId={workout.id} />
+        <div className="flex gap-3">
           <Link
-            href="/workout"
-            className="flex-1 rounded-xl py-3 text-center text-sm font-semibold text-white transition hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
+            href={isOwner ? '/history' : '/'}
+            className="flex-1 rounded-xl border border-zinc-200 py-3 text-center text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50"
           >
-            New Workout
+            {isOwner ? 'History' : 'Feed'}
           </Link>
-        )}
+          {isOwner && (
+            <Link
+              href="/workout"
+              className="flex-1 rounded-xl py-3 text-center text-sm font-semibold text-white transition hover:opacity-90"
+              style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
+            >
+              New Workout
+            </Link>
+          )}
+        </div>
       </div>
 
       {isOwner && (
