@@ -64,12 +64,13 @@ async function getFreshAccessToken(userId: string): Promise<string | null> {
 export async function syncWorkoutToStrava(
   workoutId: string,
 ): Promise<{ success: true; stravaId: number } | { error: string }> {
+  console.log('[strava/sync] called for workout', workoutId)
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user?.id) return { error: 'Not authenticated' }
+  if (!user?.id) { console.log('[strava/sync] no user'); return { error: 'Not authenticated' } }
 
   const accessToken = await getFreshAccessToken(user.id)
-  if (!accessToken) return { error: 'Strava not connected' }
+  if (!accessToken) { console.log('[strava/sync] no token'); return { error: 'Strava not connected' } }
 
   // Fetch workout (includes location)
   const { data: workout } = await supabase
