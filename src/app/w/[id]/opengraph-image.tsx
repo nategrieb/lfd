@@ -13,21 +13,6 @@ type SetRow = {
   reps: number
   rpe: number | null
   video_url: string | null
-  thumbnail_url: string | null
-}
-
-function deriveThumbFromVideoUrl(videoUrl: string): string | null {
-  try {
-    const url = new URL(videoUrl)
-    const m = url.pathname.match(/\/(.+)-(\d+)\.mp4$/)
-    if (!m) return null
-    const setId = m[1]
-    const version = m[2]
-    url.pathname = url.pathname.replace(/\/(.+)-(\d+)\.mp4$/, `/${setId}-thumb-${version}.jpg`)
-    return url.toString()
-  } catch {
-    return null
-  }
 }
 
 export default async function Image({ params }: { params: Promise<{ id: string }> }) {
@@ -70,7 +55,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
   const [{ data: rawSets }, { data: profile }] = await Promise.all([
     supabase
       .from('sets')
-      .select('exercise_name, weight, reps, rpe, video_url, thumbnail_url')
+      .select('exercise_name, weight, reps, rpe, video_url')
       .eq('workout_id', id)
       .order('created_at', { ascending: true }),
     supabase
@@ -93,9 +78,6 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     ? pool.reduce((b, s) => s.weight * s.reps > b.weight * b.reps ? s : b)
     : null
 
-  const previewImage = topS?.thumbnail_url
-    ?? (topS?.video_url ? deriveThumbFromVideoUrl(topS.video_url) : null)
-
   const metaLine = topS
     ? `${topS.weight} lbs × ${topS.reps}${topS.rpe != null ? `  •  RPE ${topS.rpe}` : ''}`
     : `${new Intl.NumberFormat('en-US').format(totalVolume)} lbs total`
@@ -114,76 +96,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
         overflow: 'hidden',
       }}
     >
-      {previewImage ? (
-        <>
-          <img
-            src={previewImage}
-            alt="Workout thumbnail"
-            width={1200}
-            height={630}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'linear-gradient(to bottom, rgba(0,0,0,0.28), rgba(0,0,0,0.08) 40%, rgba(0,0,0,0.32))',
-            }}
-          />
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '28px 34px 0 34px', zIndex: 2 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div
-                style={{
-                  width: 34,
-                  height: 34,
-                  background: 'linear-gradient(135deg, #166534, #16a34a)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: 4,
-                }}
-              >
-                <span style={{ color: 'white', fontSize: 15, fontWeight: 800 }}>LFD</span>
-              </div>
-              <span style={{ color: 'white', fontSize: 44, fontWeight: 800 }}>{topS?.exercise_name?.toUpperCase() ?? 'WORKOUT'}</span>
-            </div>
-
-            <div style={{ display: 'inline-flex', alignItems: 'center', maxWidth: 1000, background: 'rgba(0,0,0,0.55)', borderRadius: 12, padding: '9px 14px', borderLeft: '4px solid #16a34a' }}>
-              <span style={{ color: '#f4f4f5', fontSize: 35, fontWeight: 700 }}>{metaLine}</span>
-            </div>
-          </div>
-
-          <div
-            style={{
-              position: 'absolute',
-              left: '50%',
-              top: '50%',
-              width: 112,
-              height: 112,
-              borderRadius: 999,
-              transform: 'translate(-50%, -54%)',
-              background: 'rgba(0,0,0,0.42)',
-              border: '2px solid rgba(255,255,255,0.65)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <div
-              style={{
-                marginLeft: 8,
-                width: 0,
-                height: 0,
-                borderTop: '20px solid transparent',
-                borderBottom: '20px solid transparent',
-                borderLeft: '30px solid white',
-              }}
-            />
-          </div>
-        </>
-      ) : (
-        <>
+      <>
           <div
             style={{
               position: 'absolute',
@@ -232,8 +145,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
               {workoutName}
             </div>
           </div>
-        </>
-      )}
+      </>
 
       <div
         style={{

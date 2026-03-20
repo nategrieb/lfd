@@ -24,7 +24,22 @@ type SetRow = {
   reps: number
   rpe: number | null
   video_url: string | null
+  thumbnail_url?: string | null
   created_at: string
+}
+
+function deriveThumbFromVideoUrl(videoUrl: string): string | null {
+  try {
+    const url = new URL(videoUrl)
+    const m = url.pathname.match(/\/(.+)-(\d+)\.mp4$/)
+    if (!m) return null
+    const setId = m[1]
+    const version = m[2]
+    url.pathname = url.pathname.replace(/\/(.+)-(\d+)\.mp4$/, `/${setId}-thumb-${version}.jpg`)
+    return url.toString()
+  } catch {
+    return null
+  }
 }
 
 /** Pick the "top" set: prefer one with a video, then highest weight×reps. */
@@ -50,7 +65,7 @@ async function fetchWorkoutData(id: string) {
 
   const { data: sets } = await supabase
     .from('sets')
-    .select('id, exercise_name, weight, reps, rpe, video_url, created_at')
+    .select('id, exercise_name, weight, reps, rpe, video_url, thumbnail_url, created_at')
     .eq('workout_id', id)
     .order('created_at', { ascending: true })
 
@@ -94,7 +109,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // Use image-only metadata for predictable, branded unfurls across messaging apps.
   // We intentionally omit og:video so link previews prioritize the LFD card.
   const pagePath = `/w/${id}`
-  const ogImagePath = `${pagePath}/opengraph-image`
+  const firstVideoSet = sets.find((s) => !!s.video_url)
+  const videoThumb = firstVideoSet?.thumbnail_url
+    ?? (firstVideoSet?.video_url ? deriveThumbFromVideoUrl(firstVideoSet.video_url) : null)
+  const ogImagePath = videoThumb ?? `${pagePath}/opengraph-image`
 
   return {
     title,
