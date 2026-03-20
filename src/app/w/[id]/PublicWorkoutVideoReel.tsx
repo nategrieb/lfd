@@ -14,10 +14,9 @@ type Clip = {
 
 type Props = {
   clips: Clip[]
-  heroSetId: string | null
 }
 
-export default function PublicWorkoutVideoReel({ clips, heroSetId }: Props) {
+export default function PublicWorkoutVideoReel({ clips }: Props) {
   const [reelStartIndex, setReelStartIndex] = useState<number | null>(null)
 
   const reelClips = useMemo(() => (
@@ -29,7 +28,7 @@ export default function PublicWorkoutVideoReel({ clips, heroSetId }: Props) {
     }))
   ), [clips])
 
-  const hero = clips.find((clip) => clip.id === heroSetId) ?? clips[0]
+  const hero = clips[0]
 
   const openAtSet = (setId: string) => {
     const idx = reelClips.findIndex((clip) => clip.id === setId)
@@ -38,7 +37,7 @@ export default function PublicWorkoutVideoReel({ clips, heroSetId }: Props) {
 
   return (
     <>
-      <button type="button" onClick={() => openAtSet(hero.id)} className="relative block w-full bg-black text-left">
+      <button type="button" onClick={() => setReelStartIndex(0)} className="relative block w-full bg-black text-left">
         {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
         <video
           src={hero.video_url}

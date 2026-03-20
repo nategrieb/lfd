@@ -94,7 +94,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // Use image-only metadata for predictable, branded unfurls across messaging apps.
   // We intentionally omit og:video so link previews prioritize the LFD card.
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? ''
-  const ogImage = `${base}/w/${id}/opengraph-image`
+  const pagePath = `/w/${id}`
+  const ogImagePath = `${pagePath}/opengraph-image`
 
   return {
     title,
@@ -102,9 +103,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      url: `${base}/w/${id}`,
+      url: base ? `${base}${pagePath}` : pagePath,
       type: 'website',
-      images: [{ url: ogImage, width: 1200, height: 630 }],
+      images: [{ url: ogImagePath, width: 1200, height: 630 }],
     },
   }
 }
@@ -141,7 +142,7 @@ export default async function PublicWorkoutPage({ params }: Props) {
     <div className="min-h-screen bg-zinc-50">
       {/* ── Hero video ───────────────────────────────────────── */}
       {hero?.video_url ? (
-        <PublicWorkoutVideoReel clips={clips} heroSetId={hero.id} />
+        <PublicWorkoutVideoReel clips={clips} />
       ) : (
         <div
           className="flex h-32 items-end pb-5 px-5"
