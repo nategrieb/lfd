@@ -13,6 +13,41 @@ type SetRow = {
   reps: number
   rpe: number | null
   video_url: string | null
+  thumbnail_url: string | null
+}
+
+function deriveThumbFromVideoUrl(videoUrl: string): string | null {
+  try {
+    const url = new URL(videoUrl)
+    const m = url.pathname.match(/\/(.+)-(\d+)\.mp4$/)
+    if (!m) return null
+    url.pathname = url.pathname.replace(/\/(.+)-(\d+)\.mp4$/, `/${m[1]}-thumb-${m[2]}.jpg`)
+    return url.toString()
+  } catch {
+    return null
+  }
+}
+
+/** British Racing Green square badge — same in both card variants */
+function LfdBadge({ size: s = 72 }: { size?: number }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: s,
+        height: s,
+        background: 'rgba(0,0,0,0.38)',
+        borderRadius: Math.round(s * 0.17),
+        flexShrink: 0,
+      }}
+    >
+      <span style={{ color: 'white', fontSize: Math.round(s * 0.34), fontWeight: 800, letterSpacing: '-0.5px' }}>
+        LFD
+      </span>
+    </div>
+  )
 }
 
 function fallbackCard(fontData: Buffer | null) {
@@ -24,21 +59,36 @@ function fallbackCard(fontData: Buffer | null) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #166534 0%, #16a34a 100%)',
+        background: 'linear-gradient(160deg, #14532d 0%, #166534 100%)',
       }}
     >
-      <span style={{ color: 'white', fontSize: 80, fontWeight: 800 }}>LFD</span>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 100,
+          height: 100,
+          background: 'rgba(0,0,0,0.38)',
+          borderRadius: 16,
+        }}
+      >
+        <span style={{ color: 'white', fontSize: 34, fontWeight: 800 }}>LFD</span>
+      </div>
     </div>,
     {
       width: 1200,
       height: 630,
-      ...(fontData ? { fonts: [{ name: 'Noto', data: fontData, weight: 700 }] } : {}),
+      ...(fontData ? { fonts: [{ name: 'Noto', data: fontData, weight: 700 as const }] } : {}),
     },
   )
 }
 
 export default async function Image({ params }: { params: Promise<{ id: string }> }) {
-  const fontData = await readFile(path.join(process.cwd(), 'public', 'fonts', 'NotoSans-Bold.ttf')).catch(() => null)
+  const fontData = await readFile(
+    path.join(process.cwd(), 'public', 'fonts', 'NotoSans-Bold.ttf'),
+  ).catch(() => null)
+  const fonts = fontData ? [{ name: 'Noto', data: fontData, weight: 700 as const }] : []
 
   try {
     const { id } = await params
@@ -54,14 +104,12 @@ export default async function Image({ params }: { params: Promise<{ id: string }
       .eq('id', id)
       .maybeSingle()
 
-    if (!workout) {
-      return fallbackCard(fontData)
-    }
+    if (!workout) return fallbackCard(fontData)
 
     const [{ data: rawSets }, { data: profile }] = await Promise.all([
       supabase
         .from('sets')
-        .select('exercise_name, weight, reps, rpe, video_url')
+        .select('exercise_name, weight, reps, rpe, video_url, thumbnail_url')
         .eq('workout_id', id)
         .order('created_at', { ascending: true }),
       supabase
@@ -73,21 +121,135 @@ export default async function Image({ params }: { params: Promise<{ id: string }
 
     const sets = (rawSets ?? []) as SetRow[]
     const displayName = profile?.display_name ?? profile?.username ?? 'Someone'
-    const workoutName = workout.name?.trim() || new Date(workout.created_at).toLocaleDateString()
+    const workoutName = workout.name?.trim() || 'Workout'
+    const dateStr = new Date(workout.created_at).toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    })
 
     const totalVolume = sets.reduce((acc, s) => acc + s.weight * s.reps, 0)
+    const volumeStr = new Intl.NumberFormat('en-US').format(totalVolume)
+    const exerciseCount = new Set(sets.map((s) => s.exercise_name)).size
 
-    // Top set: best weight (with video preferred)
-    const withVideo = sets.filter(s => s.video_url)
+    // Top set: prefer one with video, then best weight × reps
+    const withVideo = sets.filter((s) => s.video_url)
     const pool = withVideo.length ? withVideo : sets
     const topS = pool.length
       ? pool.reduce((b, s) => s.weight * s.reps > b.weight * b.reps ? s : b)
       : null
 
-    const metaLine = topS
-      ? `${topS.weight} lbs × ${topS.reps}${topS.rpe != null ? `  •  RPE ${topS.rpe}` : ''}`
-      : `${new Intl.NumberFormat('en-US').format(totalVolume)} lbs total`
+    // Thumbnail resolution (stored URL first, derived path fallback)
+    const firstVideoSet = sets.find((s) => s.video_url)
+    const thumbUrl =
+      firstVideoSet?.thumbnail_url ??
+      (firstVideoSet?.video_url ? deriveThumbFromVideoUrl(firstVideoSet.video_url) : null)
 
+    // ─── VIDEO CARD: thumbnail bg + British Racing Green branded strip ─────
+    if (thumbUrl) {
+      const statLine = topS
+        ? `${topS.weight} lbs × ${topS.reps}${topS.rpe != null ? `  ·  RPE ${topS.rpe}` : ''}`
+        : `${volumeStr} lbs total`
+
+      return new ImageResponse(
+        <div
+          style={{
+            width: 1200,
+            height: 630,
+            display: 'flex',
+            position: 'relative',
+            overflow: 'hidden',
+            background: '#000',
+          }}
+        >
+          {/* Thumbnail fills frame */}
+          <img
+            src={thumbUrl}
+            width={1200}
+            height={630}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+          />
+          {/* Soft gradient fade above the green strip */}
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 110,
+              height: 160,
+              background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 100%)',
+              display: 'flex',
+            }}
+          />
+          {/* British Racing Green strip */}
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 110,
+              background: 'linear-gradient(90deg, #14532d 0%, #166534 60%, #166534 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0 52px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+              <LfdBadge size={68} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span
+                  style={{
+                    color: 'white',
+                    fontSize: 30,
+                    fontWeight: 800,
+                    letterSpacing: '-0.5px',
+                    lineHeight: 1,
+                    fontFamily: 'Noto, sans-serif',
+                  }}
+                >
+                  {workoutName}
+                </span>
+                <span
+                  style={{
+                    color: 'rgba(255,255,255,0.75)',
+                    fontSize: 22,
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    fontFamily: 'Noto, sans-serif',
+                  }}
+                >
+                  {displayName}
+                </span>
+              </div>
+            </div>
+            <span
+              style={{
+                color: 'rgba(255,255,255,0.9)',
+                fontSize: 26,
+                fontWeight: 700,
+                fontFamily: 'Noto, sans-serif',
+              }}
+            >
+              {statLine}
+            </span>
+          </div>
+        </div>,
+        { width: 1200, height: 630, fonts },
+      )
+    }
+
+    // ─── STATS CARD: full British Racing Green card with workout stats ─────
     return new ImageResponse(
       <div
         style={{
@@ -95,93 +257,112 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           height: 630,
           display: 'flex',
           flexDirection: 'column',
-          background: '#0f0f10',
+          justifyContent: 'space-between',
+          background: 'linear-gradient(160deg, #14532d 0%, #166534 60%, #15803d 100%)',
           fontFamily: 'Noto, sans-serif',
-          padding: '0',
-          position: 'relative',
-          overflow: 'hidden',
+          padding: '48px 56px',
         }}
       >
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background:
-              'radial-gradient(1000px 420px at 80% -10%, rgba(22,163,74,0.35), transparent 60%), radial-gradient(700px 300px at -10% 100%, rgba(22,163,74,0.28), transparent 70%)',
-          }}
-        />
+        {/* Top row: square LFD badge + date */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <LfdBadge size={72} />
+          <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 28, fontWeight: 700 }}>{dateStr}</span>
+        </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '44px 56px 0 56px', zIndex: 2 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div
-              style={{
-                width: 42,
-                height: 42,
-                background: 'linear-gradient(135deg, #166534, #16a34a)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 6,
-              }}
-            >
-              <span style={{ color: 'white', fontSize: 18, fontWeight: 800, letterSpacing: '-0.5px' }}>LFD</span>
-            </div>
-            <span style={{ color: 'white', fontSize: 48, fontWeight: 800, letterSpacing: '-1px' }}>{topS?.exercise_name?.toUpperCase() ?? 'WORKOUT'}</span>
-          </div>
-
-          <div
+        {/* Name + workout title */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: 30, fontWeight: 700 }}>
+            {displayName}
+          </span>
+          <span
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              maxWidth: 1040,
-              background: 'rgba(0,0,0,0.55)',
-              borderRadius: 14,
-              padding: '12px 18px',
-              borderLeft: '5px solid #16a34a',
+              color: 'white',
+              fontSize: 68,
+              fontWeight: 800,
+              letterSpacing: '-1.5px',
+              lineHeight: 1.0,
+              maxWidth: '85%',
             }}
           >
-            <span style={{ color: '#f4f4f5', fontSize: 40, fontWeight: 700, letterSpacing: '-0.5px' }}>{metaLine}</span>
-          </div>
-
-          <div style={{ marginTop: 8, color: 'rgba(255,255,255,0.9)', fontSize: 42, fontWeight: 700, lineHeight: 1.1 }}>
-            {displayName}'s workout
-          </div>
-          <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 52, fontWeight: 800, letterSpacing: '-1px', maxWidth: 1040, lineHeight: 1.05 }}>
             {workoutName}
-          </div>
+          </span>
         </div>
 
-        <div
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: 122,
-            background: 'linear-gradient(135deg, #166534, #16a34a)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 56px',
-            zIndex: 3,
-          }}
-        >
-          <span style={{ color: 'white', fontSize: 44, fontWeight: 800, letterSpacing: '-0.6px' }}>
-            Open In LFD Reels
-          </span>
-          <span style={{ color: 'rgba(255,255,255,0.95)', fontSize: 28, fontWeight: 700 }}>
-            {new Intl.NumberFormat('en-US').format(totalVolume)} lbs total
-          </span>
+        {/* Bottom section: stat boxes + footer */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Stat boxes */}
+          <div style={{ display: 'flex', gap: 16 }}>
+            <div
+              style={{
+                flex: 1,
+                background: 'rgba(0,0,0,0.28)',
+                borderRadius: 16,
+                padding: '18px 24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+              }}
+            >
+              <span style={{ color: 'white', fontSize: 42, fontWeight: 800, lineHeight: 1 }}>{volumeStr}</span>
+              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 20, fontWeight: 700 }}>
+                lbs total volume
+              </span>
+            </div>
+            <div
+              style={{
+                flex: 1,
+                background: 'rgba(0,0,0,0.28)',
+                borderRadius: 16,
+                padding: '18px 24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+              }}
+            >
+              <span style={{ color: 'white', fontSize: 42, fontWeight: 800, lineHeight: 1 }}>
+                {sets.length} sets
+              </span>
+              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 20, fontWeight: 700 }}>
+                across {exerciseCount} exercise{exerciseCount !== 1 ? 's' : ''}
+              </span>
+            </div>
+            {topS && (
+              <div
+                style={{
+                  flex: 1,
+                  background: 'rgba(0,0,0,0.28)',
+                  borderRadius: 16,
+                  padding: '18px 24px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                }}
+              >
+                <span style={{ color: 'white', fontSize: 42, fontWeight: 800, lineHeight: 1 }}>
+                  {topS.weight} × {topS.reps}
+                </span>
+                <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 20, fontWeight: 700 }}>
+                  top set · {topS.exercise_name}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 24, fontWeight: 700 }}>
+              {displayName}&apos;s workout — {workoutName}
+            </span>
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 22, fontWeight: 700 }}>
+              lfd.nategrieb.com
+            </span>
+          </div>
         </div>
       </div>,
-      {
-        width: 1200,
-        height: 630,
-        ...(fontData ? { fonts: [{ name: 'Noto', data: fontData, weight: 700 }] } : {}),
-      },
+      { width: 1200, height: 630, fonts },
     )
   } catch {
-    // Never fail the OG route: bots should always get a branded image.
+    // Never return a 500 — bots always get a branded image.
     return fallbackCard(fontData)
   }
 }

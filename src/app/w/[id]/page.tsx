@@ -28,20 +28,6 @@ type SetRow = {
   created_at: string
 }
 
-function deriveThumbFromVideoUrl(videoUrl: string): string | null {
-  try {
-    const url = new URL(videoUrl)
-    const m = url.pathname.match(/\/(.+)-(\d+)\.mp4$/)
-    if (!m) return null
-    const setId = m[1]
-    const version = m[2]
-    url.pathname = url.pathname.replace(/\/(.+)-(\d+)\.mp4$/, `/${setId}-thumb-${version}.jpg`)
-    return url.toString()
-  } catch {
-    return null
-  }
-}
-
 /** Pick the "top" set: prefer one with a video, then highest weight×reps. */
 function topSet(sets: SetRow[]): SetRow | null {
   if (!sets.length) return null
@@ -106,13 +92,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = [volumeStr, `${sets.length} sets across ${new Set(sets.map(s => s.exercise_name)).size} exercises`]
     .filter(Boolean).join(' · ')
 
-  // Use image-only metadata for predictable, branded unfurls across messaging apps.
-  // We intentionally omit og:video so link previews prioritize the LFD card.
   const pagePath = `/w/${id}`
-  const firstVideoSet = sets.find((s) => !!s.video_url)
-  const videoThumb = firstVideoSet?.thumbnail_url
-    ?? (firstVideoSet?.video_url ? deriveThumbFromVideoUrl(firstVideoSet.video_url) : null)
-  const ogImagePath = videoThumb ?? `${pagePath}/opengraph-image`
 
   return {
     title,
@@ -122,7 +102,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: pagePath,
       type: 'website',
-      images: [{ url: ogImagePath, width: 1200, height: 630 }],
+      images: [{ url: `${pagePath}/opengraph-image`, width: 1200, height: 630 }],
     },
   }
 }
