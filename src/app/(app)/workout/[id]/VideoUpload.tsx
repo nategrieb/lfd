@@ -231,6 +231,8 @@ export type VideoUploadProps = {
   rpe?: number | null
   oneRepMax?: number | null
   initialVideoUrl?: string | null
+  onOpenReel?: () => void
+  onVideoUrlChange?: (url: string | null) => void
 }
 
 type Status =
@@ -251,6 +253,8 @@ export default function VideoUpload({
   rpe,
   oneRepMax,
   initialVideoUrl,
+  onOpenReel,
+  onVideoUrlChange,
 }: VideoUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const ffmpegRef = useRef<FFmpeg | null>(null)
@@ -385,6 +389,7 @@ export default function VideoUpload({
       }
 
       setStatus({ type: 'done', url: urlData.publicUrl })
+      onVideoUrlChange?.(urlData.publicUrl)
     } catch (err) {
       setStatus({ type: 'error', message: err instanceof Error ? err.message : 'Upload failed' })
     }
@@ -417,6 +422,7 @@ export default function VideoUpload({
       const result = await deleteSetVideoUrl(setId)
       if (result.success) {
         setStatus({ type: 'idle' })
+        onVideoUrlChange?.(null)
       } else {
         setStatus({ type: 'error', message: result.message ?? 'Delete failed.' })
       }
@@ -426,17 +432,30 @@ export default function VideoUpload({
       <>
         {fileInput}
         <div className="mt-1 flex items-center gap-3">
-          <a
-            href={status.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 text-xs text-green-700 hover:text-green-600"
-          >
-            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-            View clip
-          </a>
+          {onOpenReel ? (
+            <button
+              type="button"
+              onClick={onOpenReel}
+              className="flex items-center gap-1 text-xs text-green-700 hover:text-green-600"
+            >
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+              View clip
+            </button>
+          ) : (
+            <a
+              href={status.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs text-green-700 hover:text-green-600"
+            >
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+              View clip
+            </a>
+          )}
           <span className="text-zinc-300">·</span>
           <button
             type="button"

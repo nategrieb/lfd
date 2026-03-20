@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import VideoModal from '@/components/VideoModal'
+import WorkoutVideoReelModal from '@/components/WorkoutVideoReelModal'
 import { nameToSlug } from '@/lib/lifts'
 
 export type SummarySet = {
@@ -21,7 +21,28 @@ type Props = {
 }
 
 export default function SummarySetsSection({ grouped, prBadges }: Props) {
-  const [activeVideo, setActiveVideo] = useState<{ src: string; title: string } | null>(null)
+  const [reelStartIndex, setReelStartIndex] = useState<number | null>(null)
+
+  const clips = useMemo(() => {
+    const list: Array<{ id: string; src: string; title: string; subtitle: string }> = []
+    for (const [exercise, sets] of Object.entries(grouped)) {
+      sets.forEach((set, i) => {
+        if (!set.video_url) return
+        list.push({
+          id: set.id,
+          src: set.video_url,
+          title: `${exercise} · Set ${i + 1}`,
+          subtitle: `${set.weight} lbs × ${set.reps}${set.rpe != null ? ` · RPE ${set.rpe}` : ''}`,
+        })
+      })
+    }
+    return list
+  }, [grouped])
+
+  const openAtSet = (setId: string) => {
+    const index = clips.findIndex((clip) => clip.id === setId)
+    if (index >= 0) setReelStartIndex(index)
+  }
 
   return (
     <>
@@ -62,12 +83,7 @@ export default function SummarySetsSection({ grouped, prBadges }: Props) {
                 {set.video_url ? (
                   <button
                     type="button"
-                    onClick={() =>
-                      setActiveVideo({
-                        src: set.video_url!,
-                        title: `${exercise} — Set ${i + 1} · ${set.weight} lbs × ${set.reps}`,
-                      })
-                    }
+                    onClick={() => openAtSet(set.id)}
                     aria-label={`Play video for ${exercise} set ${i + 1}`}
                     className="flex shrink-0 items-center gap-1.5 rounded-lg bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700 transition hover:bg-green-100"
                   >
@@ -93,11 +109,11 @@ export default function SummarySetsSection({ grouped, prBadges }: Props) {
         </div>
       ))}
 
-      {activeVideo && (
-        <VideoModal
-          src={activeVideo.src}
-          title={activeVideo.title}
-          onClose={() => setActiveVideo(null)}
+      {reelStartIndex !== null && clips.length > 0 && (
+        <WorkoutVideoReelModal
+          clips={clips}
+          initialIndex={reelStartIndex}
+          onClose={() => setReelStartIndex(null)}
         />
       )}
     </>

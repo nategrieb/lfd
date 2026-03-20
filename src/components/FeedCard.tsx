@@ -2,11 +2,12 @@
 
 import type { FeedItem, MediaItem } from '@/lib/feed'
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { nameToSlug } from '@/lib/lifts'
 import JorkButton from './JorkButton'
 import CommentsSection from './CommentsSection'
+import WorkoutVideoReelModal from './WorkoutVideoReelModal'
 
 // ── Brand mark ─────────────────────────────────────────────────────────────
 
@@ -24,44 +25,22 @@ function BrandMark({ size = 26 }: { size?: number }) {
 
 // ── VideoSlide ─────────────────────────────────────────────────────────────
 
-function VideoSlide({ url, label, isActive }: { url: string; label: string; isActive: boolean }) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const [playing, setPlaying] = useState(false)
+function VideoSlide({ url, label, onOpen }: { url: string; label: string; onOpen: () => void }) {
   const [aspectRatio, setAspectRatio] = useState('4/5')
-
-  useEffect(() => {
-    if (!isActive && videoRef.current && !videoRef.current.paused) {
-      videoRef.current.pause()
-      setPlaying(false)
-    }
-  }, [isActive])
-
-  const toggle = (e: React.MouseEvent) => {
-    e.preventDefault()
-    if (!videoRef.current) return
-    if (playing) {
-      videoRef.current.pause()
-      setPlaying(false)
-    } else {
-      videoRef.current.play().catch(() => {})
-      setPlaying(true)
-    }
-  }
 
   return (
     <button
       type="button"
-      onClick={toggle}
-      aria-label={playing ? 'Pause video' : 'Play video'}
+      onClick={onOpen}
+      aria-label="Open video reel"
       className="relative block w-full overflow-hidden"
       style={{ aspectRatio }}
     >
       <video
-        ref={videoRef}
         src={url}
         className="h-full w-full object-cover"
         preload="metadata"
-        loop
+        muted
         playsInline
         onLoadedMetadata={(e) => {
           const v = e.currentTarget
@@ -70,27 +49,23 @@ function VideoSlide({ url, label, isActive }: { url: string; label: string; isAc
             setAspectRatio(`${v.videoWidth}/${v.videoHeight}`)
           }
         }}
-        onEnded={() => setPlaying(false)}
       />
 
-      {/* Paused state: label + play button */}
-      {!playing && (
-        <div className="absolute inset-0 flex flex-col pointer-events-none">
-          <p className="m-3 self-start rounded bg-black/50 px-2.5 py-1 text-[11px] font-semibold leading-none text-white backdrop-blur-sm">
-            {label}
-          </p>
-          <div className="flex flex-1 items-center justify-center">
-            <div
-              className="flex h-14 w-14 items-center justify-center rounded-full shadow-xl shadow-black/50"
-              style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="ml-1 h-7 w-7 text-white" aria-hidden="true">
-                <path d="M8 5.5v13l10-6.5L8 5.5z" />
-              </svg>
-            </div>
+      <div className="absolute inset-0 flex flex-col pointer-events-none">
+        <p className="m-3 self-start rounded bg-black/50 px-2.5 py-1 text-[11px] font-semibold leading-none text-white backdrop-blur-sm">
+          {label}
+        </p>
+        <div className="flex flex-1 items-center justify-center">
+          <div
+            className="flex h-14 w-14 items-center justify-center rounded-full shadow-xl shadow-black/50"
+            style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="ml-1 h-7 w-7 text-white" aria-hidden="true">
+              <path d="M8 5.5v13l10-6.5L8 5.5z" />
+            </svg>
           </div>
         </div>
-      )}
+      </div>
     </button>
   )
 }
@@ -108,7 +83,7 @@ function PhotoSlide({ url }: { url: string }) {
 
 // ── MediaCarousel ──────────────────────────────────────────────────────────
 
-function MediaCarousel({ items }: { items: MediaItem[] }) {
+function MediaCarousel({ items, onOpenVideo }: { items: MediaItem[]; onOpenVideo: (videoUrl: string) => void }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activeIndex, setActiveIndex] = useState(0)
 
@@ -128,11 +103,9 @@ function MediaCarousel({ items }: { items: MediaItem[] }) {
       >
         {items.map((item, i) => (
           <div key={i} style={{ scrollSnapAlign: 'start', flexShrink: 0, width: '100%' }}>
-            {item.kind === 'video' ? (
-              <VideoSlide url={item.url} label={item.label} isActive={i === activeIndex} />
-            ) : (
-              <PhotoSlide url={item.url} />
-            )}
+            {item.kind === 'video'
+              ? <VideoSlide url={item.url} label={item.label} onOpen={() => onOpenVideo(item.url)} />
+              : <PhotoSlide url={item.url} />}
           </div>
         ))}
       </div>
@@ -172,6 +145,28 @@ export default function FeedCard({ item, displayName, userInitial, username, ava
   const router = useRouter()
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [localCommentCount, setLocalCommentCount] = useState(commentCount)
+  const [reelStartIndex, setReelStartIndex] = useState<number | null>(null)
+
+  const sets = workout.sets ?? []
+
+  const videoReelClips = useMemo(() => {
+    const countByExercise: Record<string, number> = {}
+    const clips: Array<{ id: string; src: string; title: string; subtitle: string }> = []
+
+    for (const set of sets) {
+      if (!set.video_url) continue
+      countByExercise[set.exercise_name] = (countByExercise[set.exercise_name] ?? 0) + 1
+      const setNum = countByExercise[set.exercise_name]
+      clips.push({
+        id: set.id,
+        src: set.video_url,
+        title: `${set.exercise_name} · Set ${setNum}`,
+        subtitle: `${set.weight} lbs × ${set.reps}${set.rpe != null ? ` · RPE ${set.rpe}` : ''}`,
+      })
+    }
+
+    return clips
+  }, [sets])
 
   const dateStr = new Date(workout.created_at).toLocaleDateString(undefined, {
     weekday: 'short',
@@ -182,7 +177,6 @@ export default function FeedCard({ item, displayName, userInitial, username, ava
   const summaryHref = `/workout/${workout.id}/summary`
   const profileHref = username ? `/people/${username}` : null
 
-  const sets = workout.sets ?? []
   const exerciseCount = new Set(sets.map((s) => s.exercise_name)).size
   const totalVolume = sets.reduce((sum, s) => sum + s.weight * s.reps, 0)
   const workoutTitle = workout.name?.trim() || null
@@ -229,7 +223,15 @@ export default function FeedCard({ item, displayName, userInitial, username, ava
       </div>
 
       {/* ── Media carousel ───────────────────────────────────────────────── */}
-      {mediaItems.length > 0 && <MediaCarousel items={mediaItems} />}
+      {mediaItems.length > 0 && (
+        <MediaCarousel
+          items={mediaItems}
+          onOpenVideo={(videoUrl) => {
+            const idx = videoReelClips.findIndex((clip) => clip.src === videoUrl)
+            setReelStartIndex(idx >= 0 ? idx : 0)
+          }}
+        />
+      )}
 
       {/* ── Footer ───────────────────────────────────────────────────────── */}
       <div
@@ -317,6 +319,14 @@ export default function FeedCard({ item, displayName, userInitial, username, ava
           workoutId={workout.id}
           workoutOwnerId={workout.user_id}
           onNewComment={() => setLocalCommentCount(c => c + 1)}
+        />
+      )}
+
+      {reelStartIndex !== null && videoReelClips.length > 0 && (
+        <WorkoutVideoReelModal
+          clips={videoReelClips}
+          initialIndex={reelStartIndex}
+          onClose={() => setReelStartIndex(null)}
         />
       )}
 

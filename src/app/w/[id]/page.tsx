@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import type { Metadata } from 'next'
+import PublicWorkoutVideoReel from './PublicWorkoutVideoReel'
 
 export const dynamic = 'force-dynamic'
 
@@ -74,6 +75,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const displayName = profile?.display_name ?? profile?.username ?? 'Someone'
 
   const totalVolume = sets.reduce((acc, s) => acc + s.weight * s.reps, 0)
+  const clips = sets.filter((s) => !!s.video_url).map((s) => ({
+    id: s.id,
+    exercise_name: s.exercise_name,
+    weight: s.weight,
+    reps: s.reps,
+    rpe: s.rpe,
+    video_url: s.video_url!,
+  }))
   const volumeStr = totalVolume > 0
     ? `${new Intl.NumberFormat('en-US').format(totalVolume)} lbs total volume`
     : ''
@@ -114,6 +123,14 @@ export default async function PublicWorkoutPage({ params }: Props) {
   const displayName = profile?.display_name ?? profile?.username ?? 'Someone'
 
   const totalVolume = sets.reduce((acc, s) => acc + s.weight * s.reps, 0)
+  const clips = sets.filter((s) => !!s.video_url).map((s) => ({
+    id: s.id,
+    exercise_name: s.exercise_name,
+    weight: s.weight,
+    reps: s.reps,
+    rpe: s.rpe,
+    video_url: s.video_url!,
+  }))
 
   // Group sets by exercise for the stats section
   const grouped = sets.reduce((acc: Record<string, SetRow[]>, s) => {
@@ -126,24 +143,7 @@ export default async function PublicWorkoutPage({ params }: Props) {
     <div className="min-h-screen bg-zinc-50">
       {/* ── Hero video ───────────────────────────────────────── */}
       {hero?.video_url ? (
-        <div className="relative w-full bg-black">
-          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-          <video
-            src={hero.video_url}
-            controls
-            playsInline
-            autoPlay
-            muted
-            loop
-            className="block w-full"
-            style={{ maxHeight: '85dvh', objectFit: 'contain' }}
-          />
-          {/* exercise badge */}
-          <div className="absolute bottom-4 left-4 rounded-xl bg-black/50 px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-sm">
-            {hero.exercise_name} — {hero.weight} lbs × {hero.reps}
-            {hero.rpe != null && <span className="ml-1.5 text-white/60">RPE {hero.rpe}</span>}
-          </div>
-        </div>
+        <PublicWorkoutVideoReel clips={clips} heroSetId={hero.id} />
       ) : (
         <div
           className="flex h-32 items-end pb-5 px-5"
@@ -193,14 +193,9 @@ export default async function PublicWorkoutPage({ params }: Props) {
                         )}
                       </span>
                       {s.video_url && s !== hero && (
-                        <a
-                          href={s.video_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="ml-2 rounded-lg bg-zinc-50 px-2 py-0.5 text-xs font-semibold text-zinc-500 hover:bg-zinc-100"
-                        >
-                          Clip
-                        </a>
+                        <span className="ml-2 rounded-lg bg-zinc-50 px-2 py-0.5 text-xs font-semibold text-zinc-500">
+                          Clip available in reel
+                        </span>
                       )}
                     </li>
                   ))}

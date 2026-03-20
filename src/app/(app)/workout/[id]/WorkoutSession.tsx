@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase'
 import { nameToSlug } from '@/lib/lifts'
 import { formatTempo, formatRest } from '@/lib/programs'
 import RestTimer from './RestTimer'
+import WorkoutVideoReelModal from '@/components/WorkoutVideoReelModal'
 
 type ScheduledSet = {
   id: string
@@ -186,6 +187,7 @@ export default function WorkoutSession({
   const [existingPhotos, setExistingPhotos] = useState<string[]>(initialPostPhotos ?? [])
   const [newPhotoFiles, setNewPhotoFiles] = useState<File[]>([])
   const [newPhotoPreviews, setNewPhotoPreviews] = useState<string[]>([])
+  const [reelStartIndex, setReelStartIndex] = useState<number | null>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
   const removeExistingPhoto = (index: number) => {
@@ -214,6 +216,29 @@ export default function WorkoutSession({
       return acc
     }, {})
   }, [sets])
+
+  const workoutClips = useMemo(() => {
+    const clips: Array<{ id: string; src: string; title: string; subtitle: string }> = []
+    const countByExercise: Record<string, number> = {}
+    for (const set of sets) {
+      if (!set.video_url) continue
+      const key = set.exercise_name
+      countByExercise[key] = (countByExercise[key] ?? 0) + 1
+      const setNum = countByExercise[key]
+      clips.push({
+        id: set.id,
+        src: set.video_url,
+        title: `${set.exercise_name} · Set ${setNum}`,
+        subtitle: `${set.weight} lbs × ${set.reps}${set.rpe != null ? ` · RPE ${set.rpe}` : ''}`,
+      })
+    }
+    return clips
+  }, [sets])
+
+  const openReelAtSet = (setId: string) => {
+    const idx = workoutClips.findIndex((clip) => clip.id === setId)
+    if (idx >= 0) setReelStartIndex(idx)
+  }
 
   const totalSets = sets.length
   const totalVolume = useMemo(() => sets.reduce((acc, set) => acc + set.weight * set.reps, 0), [sets])
@@ -450,6 +475,13 @@ export default function WorkoutSession({
 
   return (
     <>
+      {reelStartIndex !== null && workoutClips.length > 0 && (
+        <WorkoutVideoReelModal
+          clips={workoutClips}
+          initialIndex={reelStartIndex}
+          onClose={() => setReelStartIndex(null)}
+        />
+      )}
       {showFinishSheet && (
         <FinishWorkoutSheet
           workoutId={workoutId}
@@ -718,6 +750,10 @@ export default function WorkoutSession({
                         rpe={set.rpe}
                         oneRepMax={getOneRepMax(exerciseName, liftOneRepMaxes)}
                         initialVideoUrl={set.video_url}
+                        onOpenReel={() => openReelAtSet(set.id)}
+                        onVideoUrlChange={(url) => {
+                          setSets((prev) => prev.map((s) => (s.id === set.id ? { ...s, video_url: url } : s)))
+                        }}
                       />
                     </li>
                   ))}

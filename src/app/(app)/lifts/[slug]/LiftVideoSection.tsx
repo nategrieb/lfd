@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import VideoModal from '@/components/VideoModal'
+import WorkoutVideoReelModal from '@/components/WorkoutVideoReelModal'
 
 export type VideoClip = {
   src: string
@@ -10,7 +10,7 @@ export type VideoClip = {
 }
 
 export default function LiftVideoSection({ clips }: { clips: VideoClip[] }) {
-  const [active, setActive] = useState<VideoClip | null>(null)
+  const [reelStartIndex, setReelStartIndex] = useState<number | null>(null)
 
   if (clips.length === 0) return null
 
@@ -24,7 +24,7 @@ export default function LiftVideoSection({ clips }: { clips: VideoClip[] }) {
           <button
             key={i}
             type="button"
-            onClick={() => setActive(clip)}
+            onClick={() => setReelStartIndex(i)}
             className="group overflow-hidden rounded-xl border border-zinc-100 bg-white shadow-sm text-left transition hover:border-green-700/30"
           >
             {/* Play-button thumbnail */}
@@ -49,11 +49,16 @@ export default function LiftVideoSection({ clips }: { clips: VideoClip[] }) {
         ))}
       </div>
 
-      {active && (
-        <VideoModal
-          src={active.src}
-          title={`${active.title} · ${active.date}`}
-          onClose={() => setActive(null)}
+      {reelStartIndex !== null && (
+        <WorkoutVideoReelModal
+          clips={clips.map((clip) => ({
+            id: `${clip.src}-${clip.date}`,
+            src: clip.src,
+            title: clip.title,
+            subtitle: clip.date,
+          }))}
+          initialIndex={reelStartIndex}
+          onClose={() => setReelStartIndex(null)}
         />
       )}
     </section>

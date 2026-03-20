@@ -116,13 +116,15 @@ export async function syncWorkoutToStrava(
   const workoutName = workout.name?.trim() || 'Weight Training'
 
   const description = [
-    `🏋 ${workoutName}${locationPart}`,
+    `🟩 LFD  ${workoutName}${locationPart}`,
+    '',
+    `OPEN IN LFD REELS: ${shareLink}`,
     '',
     setsBlock,
     '',
-    `📊 Total Volume: ${new Intl.NumberFormat('en-US').format(totalVolume)} lbs`,
+    `TOTAL VOLUME: ${new Intl.NumberFormat('en-US').format(totalVolume)} lbs`,
     '',
-    `🔗 Full workout: ${shareLink}`,
+    `OPEN IN LFD REELS: ${shareLink}`,
   ].join('\n')
 
   const body = {
