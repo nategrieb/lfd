@@ -97,17 +97,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: `${base}/w/${id}`,
       type: 'video.other',
-      ...(ogVideo
-        ? {
-            videos: [{ url: ogVideo, type: 'video/mp4' }],
-          }
-        : {}),
-    },
-    twitter: {
-      card: ogVideo ? 'player' : 'summary',
-      title,
-      description,
-      ...(ogVideo ? { players: [{ playerUrl: ogVideo, width: 480, height: 270 }] } : {}),
+      ...(ogVideo ? { videos: [{ url: ogVideo, type: 'video/mp4' }] } : {}),
     },
   }
 }
