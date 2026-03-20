@@ -10,6 +10,8 @@ type Clip = {
   reps: number
   rpe: number | null
   video_url: string
+  distance_m?: number | null
+  duration_seconds?: number | null
 }
 
 type Props = {
@@ -20,12 +22,13 @@ export default function PublicWorkoutVideoReel({ clips }: Props) {
   const [reelStartIndex, setReelStartIndex] = useState<number | null>(null)
 
   const reelClips = useMemo(() => (
-    clips.map((clip, i) => ({
-      id: clip.id,
-      src: clip.video_url,
-      title: `${clip.exercise_name} · Clip ${i + 1}`,
-      subtitle: `${clip.weight} lbs × ${clip.reps}${clip.rpe != null ? ` · RPE ${clip.rpe}` : ''}`,
-    }))
+    clips.map((clip, i) => {
+      const isCardio = (clip.distance_m ?? 0) > 0 || ((clip.duration_seconds ?? 0) > 0 && clip.weight === 0 && clip.reps === 0)
+      const sub = isCardio
+        ? [(clip.distance_m ?? 0) > 0 ? `${(clip.distance_m! / 1609.344).toFixed(2)} mi` : null, (clip.duration_seconds ?? 0) > 0 ? `${Math.floor(clip.duration_seconds! / 60)}:${String(clip.duration_seconds! % 60).padStart(2, '0')}` : null].filter(Boolean).join(' · ')
+        : `${clip.weight} lbs × ${clip.reps}${clip.rpe != null ? ` · RPE ${clip.rpe}` : ''}`
+      return { id: clip.id, src: clip.video_url, title: `${clip.exercise_name} · Clip ${i + 1}`, subtitle: sub }
+    })
   ), [clips])
 
   const hero = clips[0]

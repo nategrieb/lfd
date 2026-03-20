@@ -14,6 +14,17 @@ type SetRow = {
   rpe: number | null
   video_url: string | null
   thumbnail_url: string | null
+  distance_m?: number | null
+  duration_seconds?: number | null
+}
+
+function isCardio(s: SetRow): boolean {
+  return (s.distance_m ?? 0) > 0 || ((s.duration_seconds ?? 0) > 0 && s.weight === 0 && s.reps === 0)
+}
+function fmtDist(m: number): string { return `${(m / 1609.344).toFixed(2)} mi` }
+function fmtDur(sec: number): string {
+  const m = Math.floor(sec / 60); const s = sec % 60
+  return `${m}:${String(s).padStart(2, '0')}`
 }
 
 function deriveThumbFromVideoUrl(videoUrl: string): string | null {
@@ -109,7 +120,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     const [{ data: rawSets }, { data: profile }] = await Promise.all([
       supabase
         .from('sets')
-        .select('exercise_name, weight, reps, rpe, video_url, thumbnail_url')
+        .select('exercise_name, weight, reps, rpe, video_url, thumbnail_url, distance_m, duration_seconds')
         .eq('workout_id', id)
         .order('created_at', { ascending: true }),
       supabase
@@ -128,15 +139,24 @@ export default async function Image({ params }: { params: Promise<{ id: string }
       day: 'numeric',
     })
 
-    const totalVolume = sets.reduce((acc, s) => acc + s.weight * s.reps, 0)
-    const volumeStr = new Intl.NumberFormat('en-US').format(totalVolume)
+    const strengthSets = sets.filter(s => !isCardio(s))
+    const cardioSets = sets.filter(s => isCardio(s))
+    const totalVolume = strengthSets.reduce((acc, s) => acc + s.weight * s.reps, 0)
+    const totalDistanceM = cardioSets.reduce((acc, s) => acc + (s.distance_m ?? 0), 0)
+    const totalCardioSeconds = cardioSets.reduce((acc, s) => acc + (s.duration_seconds ?? 0), 0)
+    const volumeStr = totalVolume > 0 ? new Intl.NumberFormat('en-US').format(totalVolume) : null
+    const distStr = totalDistanceM > 0 ? fmtDist(totalDistanceM) + (totalCardioSeconds > 0 ? ` · ${fmtDur(totalCardioSeconds)}` : '') : null
     const exerciseCount = new Set(sets.map((s) => s.exercise_name)).size
 
     // Top set: prefer one with video, then best weight × reps
     const withVideo = sets.filter((s) => s.video_url)
     const pool = withVideo.length ? withVideo : sets
     const topS = pool.length
-      ? pool.reduce((b, s) => s.weight * s.reps > b.weight * b.reps ? s : b)
+      ? pool.reduce((b, s) => {
+          const scoreS = isCardio(s) ? (s.distance_m ?? 0) : s.weight * s.reps
+          const scoreB = isCardio(b) ? (b.distance_m ?? 0) : b.weight * b.reps
+          return scoreS > scoreB ? s : b
+        })
       : null
 
     // Thumbnail resolution (stored URL first, derived path fallback)
@@ -212,9 +232,9 @@ export default async function Image({ params }: { params: Promise<{ id: string }
                 gap: 6,
               }}
             >
-              <span style={{ color: 'white', fontSize: 42, fontWeight: 800, lineHeight: 1 }}>{volumeStr}</span>
+            <span style={{ color: 'white', fontSize: 42, fontWeight: 800, lineHeight: 1 }}>{volumeStr ?? distStr ?? '—'}</span>
               <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 20, fontWeight: 700 }}>
-                lbs total volume
+                {volumeStr ? 'lbs total volume' : distStr ? 'total distance' : 'no volume'}
               </span>
             </div>
             <div
@@ -248,7 +268,9 @@ export default async function Image({ params }: { params: Promise<{ id: string }
                 }}
               >
                 <span style={{ color: 'white', fontSize: 42, fontWeight: 800, lineHeight: 1 }}>
-                  {topS.weight} × {topS.reps}
+                  {isCardio(topS)
+                    ? [(topS.distance_m ?? 0) > 0 ? fmtDist(topS.distance_m!) : null, (topS.duration_seconds ?? 0) > 0 ? fmtDur(topS.duration_seconds!) : null].filter(Boolean).join(' · ')
+                    : `${topS.weight} × ${topS.reps}`}
                 </span>
                 <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 20, fontWeight: 700 }}>
                   top set · {topS.exercise_name}

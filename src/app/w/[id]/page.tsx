@@ -26,16 +26,29 @@ type SetRow = {
   video_url: string | null
   thumbnail_url?: string | null
   created_at: string
+  distance_m?: number | null
+  duration_seconds?: number | null
 }
 
-/** Pick the "top" set: prefer one with a video, then highest weight×reps. */
+function isCardio(s: SetRow): boolean {
+  return (s.distance_m ?? 0) > 0 || ((s.duration_seconds ?? 0) > 0 && s.weight === 0 && s.reps === 0)
+}
+function fmtDist(m: number): string { return `${(m / 1609.344).toFixed(2)} mi` }
+function fmtDur(sec: number): string {
+  const m = Math.floor(sec / 60); const s = sec % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+/** Pick the "top" set: prefer one with a video, then highest weight×reps (or distance for cardio). */
 function topSet(sets: SetRow[]): SetRow | null {
   if (!sets.length) return null
   const withVideo = sets.filter(s => s.video_url)
   const pool = withVideo.length ? withVideo : sets
-  return pool.reduce((best, s) =>
-    s.weight * s.reps > best.weight * best.reps ? s : best
-  )
+  return pool.reduce((best, s) => {
+    const scoreS = isCardio(s) ? (s.distance_m ?? 0) : s.weight * s.reps
+    const scoreBest = isCardio(best) ? (best.distance_m ?? 0) : best.weight * best.reps
+    return scoreS > scoreBest ? s : best
+  })
 }
 
 async function fetchWorkoutData(id: string) {
@@ -51,7 +64,7 @@ async function fetchWorkoutData(id: string) {
 
   const { data: sets } = await supabase
     .from('sets')
-    .select('id, exercise_name, weight, reps, rpe, video_url, thumbnail_url, created_at')
+    .select('id, exercise_name, weight, reps, rpe, video_url, thumbnail_url, created_at, distance_m, duration_seconds')
     .eq('workout_id', id)
     .order('created_at', { ascending: true })
 
@@ -75,7 +88,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const hero = topSet(sets)
   const displayName = profile?.display_name ?? profile?.username ?? 'Someone'
 
-  const totalVolume = sets.reduce((acc, s) => acc + s.weight * s.reps, 0)
+  const strengthSets = sets.filter(s => !isCardio(s))
+  const cardioSets = sets.filter(s => isCardio(s))
+  const totalVolume = strengthSets.reduce((acc, s) => acc + s.weight * s.reps, 0)
+  const totalDistanceM = cardioSets.reduce((acc, s) => acc + (s.distance_m ?? 0), 0)
   const clips = sets.filter((s) => !!s.video_url).map((s) => ({
     id: s.id,
     exercise_name: s.exercise_name,
@@ -83,13 +99,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     reps: s.reps,
     rpe: s.rpe,
     video_url: s.video_url!,
+    distance_m: s.distance_m,
+    duration_seconds: s.duration_seconds,
   }))
-  const volumeStr = totalVolume > 0
+  const statStr = totalVolume > 0
     ? `${new Intl.NumberFormat('en-US').format(totalVolume)} lbs total volume`
-    : ''
+    : totalDistanceM > 0 ? `${fmtDist(totalDistanceM)} total distance` : ''
 
   const title = `${displayName}'s workout — ${workout.name?.trim() || new Date(workout.created_at).toLocaleDateString()}`
-  const description = [volumeStr, `${sets.length} sets across ${new Set(sets.map(s => s.exercise_name)).size} exercises`]
+  const description = [statStr, `${sets.length} sets across ${new Set(sets.map(s => s.exercise_name)).size} exercises`]
     .filter(Boolean).join(' · ')
 
   const pagePath = `/w/${id}`
@@ -118,7 +136,11 @@ export default async function PublicWorkoutPage({ params }: Props) {
   const hero = topSet(sets)
   const displayName = profile?.display_name ?? profile?.username ?? 'Someone'
 
-  const totalVolume = sets.reduce((acc, s) => acc + s.weight * s.reps, 0)
+  const strengthSets = sets.filter(s => !isCardio(s))
+  const cardioSets = sets.filter(s => isCardio(s))
+  const totalVolume = strengthSets.reduce((acc, s) => acc + s.weight * s.reps, 0)
+  const totalDistanceM = cardioSets.reduce((acc, s) => acc + (s.distance_m ?? 0), 0)
+  const totalCardioSeconds = cardioSets.reduce((acc, s) => acc + (s.duration_seconds ?? 0), 0)
   const clips = sets.filter((s) => !!s.video_url).map((s) => ({
     id: s.id,
     exercise_name: s.exercise_name,
@@ -126,6 +148,8 @@ export default async function PublicWorkoutPage({ params }: Props) {
     reps: s.reps,
     rpe: s.rpe,
     video_url: s.video_url!,
+    distance_m: s.distance_m,
+    duration_seconds: s.duration_seconds,
   }))
 
   // Group sets by exercise for the stats section
@@ -159,12 +183,14 @@ export default async function PublicWorkoutPage({ params }: Props) {
           })}
         </p>
 
-        {totalVolume > 0 && (
+        {(totalVolume > 0 || totalDistanceM > 0) && (
           <div className="mt-4 rounded-2xl border border-zinc-100 bg-white p-4 text-center shadow-sm">
-            <p className="text-3xl font-bold text-zinc-900">
-              {new Intl.NumberFormat('en-US').format(totalVolume)} lbs
-            </p>
-            <p className="text-xs text-zinc-400">Total volume</p>
+            {totalVolume > 0 && (
+              <><p className="text-3xl font-bold text-zinc-900">{new Intl.NumberFormat('en-US').format(totalVolume)} lbs</p><p className="text-xs text-zinc-400">Total volume</p></>
+            )}
+            {totalDistanceM > 0 && (
+              <><p className={`text-3xl font-bold text-zinc-900${totalVolume > 0 ? ' mt-3' : ''}`}>{fmtDist(totalDistanceM)}{totalCardioSeconds > 0 ? ` · ${fmtDur(totalCardioSeconds)}` : ''}</p><p className="text-xs text-zinc-400">Total distance</p></>
+            )}
           </div>
         )}
 
@@ -176,17 +202,19 @@ export default async function PublicWorkoutPage({ params }: Props) {
               <div key={exercise} className="rounded-2xl border border-zinc-100 bg-white p-4 shadow-sm">
                 <p className="font-semibold text-zinc-800">{exercise}</p>
                 <p className="mt-0.5 text-xs text-zinc-400">
-                  {exSets.length} set{exSets.length !== 1 ? 's' : ''} · best {best.weight} lbs × {best.reps}
+                  {exSets.length} set{exSets.length !== 1 ? 's' : ''} ·{' '}
+                  {isCardio(best)
+                    ? [(best.distance_m ?? 0) > 0 ? fmtDist(best.distance_m!) : null, (best.duration_seconds ?? 0) > 0 ? fmtDur(best.duration_seconds!) : null].filter(Boolean).join(' · ')
+                    : `best ${best.weight} lbs × ${best.reps}`}
                 </p>
                 <ul className="mt-3 space-y-1.5">
                   {exSets.map((s, i) => (
                     <li key={s.id} className="flex items-center justify-between text-sm">
                       <span className="text-zinc-400">Set {i + 1}</span>
                       <span className="font-medium text-zinc-700">
-                        {s.weight} lbs × {s.reps}
-                        {s.rpe != null && (
-                          <span className="ml-2 text-xs text-zinc-400">RPE {s.rpe}</span>
-                        )}
+                        {isCardio(s)
+                          ? [(s.distance_m ?? 0) > 0 ? fmtDist(s.distance_m!) : null, (s.duration_seconds ?? 0) > 0 ? fmtDur(s.duration_seconds!) : null].filter(Boolean).join(' · ')
+                          : <>{s.weight} lbs × {s.reps}{s.rpe != null && <span className="ml-2 text-xs text-zinc-400">RPE {s.rpe}</span>}</>}
                       </span>
                       {s.video_url && (
                         <span className="ml-2 rounded-lg bg-zinc-50 px-2 py-0.5 text-xs font-semibold text-zinc-500">
