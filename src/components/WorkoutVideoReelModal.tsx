@@ -157,7 +157,7 @@ export default function WorkoutVideoReelModal({ clips, initialIndex = 0, onClose
           <section
             key={clip.id}
             ref={(el) => { sectionRefs.current[i] = el }}
-            className="relative flex h-screen snap-start items-start justify-center"
+            className="relative flex h-screen snap-start items-center justify-center px-2"
           >
             <video
               ref={(el) => { videoRefs.current[clip.id] = el }}
@@ -168,7 +168,7 @@ export default function WorkoutVideoReelModal({ clips, initialIndex = 0, onClose
               loop
               playsInline
               preload="metadata"
-              className="h-[100svh] w-screen"
+              className="max-h-[100svh] max-w-full"
               style={{ objectFit: 'contain' }}
               onLoadedData={(e) => {
                 if (i === activeIndex) {

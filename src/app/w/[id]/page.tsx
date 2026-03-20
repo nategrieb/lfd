@@ -97,6 +97,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // og:image absent; the platform will render a play-button card instead.
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? ''
   const ogVideo = hero?.video_url ?? undefined
+  const ogImage = `${base}/w/${id}/opengraph-image`
 
   return {
     title,
@@ -106,7 +107,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: `${base}/w/${id}`,
       type: 'video.other',
+      images: [{ url: ogImage, width: 1200, height: 630 }],
       ...(ogVideo ? { videos: [{ url: ogVideo, type: 'video/mp4' }] } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImage],
     },
   }
 }
@@ -192,9 +200,9 @@ export default async function PublicWorkoutPage({ params }: Props) {
                           <span className="ml-2 text-xs text-zinc-400">RPE {s.rpe}</span>
                         )}
                       </span>
-                      {s.video_url && s !== hero && (
+                      {s.video_url && (
                         <span className="ml-2 rounded-lg bg-zinc-50 px-2 py-0.5 text-xs font-semibold text-zinc-500">
-                          Clip available in reel
+                          {s.id === hero?.id ? 'Playing above + in reel' : 'Clip available in reel'}
                         </span>
                       )}
                     </li>
