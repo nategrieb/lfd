@@ -9,7 +9,6 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get('error')
   const scope = searchParams.get('scope')
 
-  console.log('[strava/callback] granted scope:', scope)
 
   const redirectBase = `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/settings/integrations`
 

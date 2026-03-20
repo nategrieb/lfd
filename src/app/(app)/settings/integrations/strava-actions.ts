@@ -64,13 +64,12 @@ async function getFreshAccessToken(userId: string): Promise<string | null> {
 export async function syncWorkoutToStrava(
   workoutId: string,
 ): Promise<{ success: true; stravaId: number } | { error: string }> {
-  console.log('[strava/sync] called for workout', workoutId)
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user?.id) { console.log('[strava/sync] no user'); return { error: 'Not authenticated' } }
+  if (!user?.id) return { error: 'Not authenticated' }
 
   const accessToken = await getFreshAccessToken(user.id)
-  if (!accessToken) { console.log('[strava/sync] no token'); return { error: 'Strava not connected' } }
+  if (!accessToken) return { error: 'Strava not connected' }
 
   // Fetch workout (includes location)
   const { data: workout } = await supabase
@@ -130,13 +129,10 @@ export async function syncWorkoutToStrava(
     name:             workoutName,
     type:             'WeightTraining',
     sport_type:       'WeightTraining',
-    start_date_local: new Date(workout.created_at).toISOString(),
+    start_date_local: new Date(workout.created_at).toISOString().replace(/\.\d{3}Z$/, 'Z'),
     elapsed_time:     3600,
     description,
   }
-
-  console.log('[strava/sync] token prefix:', accessToken.slice(0, 8))
-  console.log('[strava/sync] body:', JSON.stringify(body, null, 2))
 
   const stravaRes = await fetch('https://www.strava.com/api/v3/activities', {
     method: 'POST',
@@ -149,8 +145,6 @@ export async function syncWorkoutToStrava(
   })
 
   const msg = await stravaRes.text()
-  console.log('[strava/sync] response status:', stravaRes.status)
-  console.log('[strava/sync] response body:', msg)
 
   if (!stravaRes.ok) {
     return { error: `Strava error ${stravaRes.status}: ${msg}` }
