@@ -332,7 +332,10 @@ export default function VideoUpload({
         '-i', 'input.mp4',
         '-i', 'overlay.png',
         // overlay=0:0 — PNG is full-frame so it composites from the top-left corner.
+        // [0:v][1:v]overlay only routes video through the filter graph; audio from
+        // input 0 must be explicitly mapped with -map 0:a? (? = skip if no audio track).
         '-filter_complex', '[0:v][1:v]overlay=0:0',
+        '-map', '0:a?',
         '-c:v', 'libx264',
         '-preset', 'fast',
         '-crf', '23',
