@@ -91,12 +91,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = [volumeStr, `${sets.length} sets across ${new Set(sets.map(s => s.exercise_name)).size} exercises`]
     .filter(Boolean).join(' · ')
 
-  // Use the hero video as og:video; messaging apps that support it (e.g. WhatsApp web)
-  // will embed it directly. For apps that only show og:image we fall back to a poster
-  // frame — Supabase Storage doesn't generate thumbnails automatically, so we leave
-  // og:image absent; the platform will render a play-button card instead.
+  // Use image-only metadata for predictable, branded unfurls across messaging apps.
+  // We intentionally omit og:video so link previews prioritize the LFD card.
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? ''
-  const ogVideo = hero?.video_url ?? undefined
   const ogImage = `${base}/w/${id}/opengraph-image`
 
   return {
@@ -106,15 +103,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description,
       url: `${base}/w/${id}`,
-      type: 'video.other',
+      type: 'website',
       images: [{ url: ogImage, width: 1200, height: 630 }],
-      ...(ogVideo ? { videos: [{ url: ogVideo, type: 'video/mp4' }] } : {}),
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title,
-      description,
-      images: [ogImage],
     },
   }
 }

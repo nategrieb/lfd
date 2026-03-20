@@ -11,6 +11,7 @@ type SetRow = {
   exercise_name: string
   weight: number
   reps: number
+  rpe: number | null
   video_url: string | null
 }
 
@@ -50,7 +51,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
   const [{ data: rawSets }, { data: profile }] = await Promise.all([
     supabase
       .from('sets')
-      .select('exercise_name, weight, reps, video_url')
+      .select('exercise_name, weight, reps, rpe, video_url')
       .eq('workout_id', id)
       .order('created_at', { ascending: true }),
     supabase
@@ -65,7 +66,6 @@ export default async function Image({ params }: { params: Promise<{ id: string }
   const workoutName = workout.name?.trim() || new Date(workout.created_at).toLocaleDateString()
 
   const totalVolume = sets.reduce((acc, s) => acc + s.weight * s.reps, 0)
-  const exerciseCount = new Set(sets.map(s => s.exercise_name)).size
 
   // Top set: best weight (with video preferred)
   const withVideo = sets.filter(s => s.video_url)
@@ -74,9 +74,9 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     ? pool.reduce((b, s) => s.weight * s.reps > b.weight * b.reps ? s : b)
     : null
 
-  const dateStr = new Date(workout.created_at).toLocaleDateString('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric',
-  })
+  const metaLine = topS
+    ? `${topS.weight} lbs × ${topS.reps}${topS.rpe != null ? `  •  RPE ${topS.rpe}` : ''}`
+    : `${new Intl.NumberFormat('en-US').format(totalVolume)} lbs total`
 
   return new ImageResponse(
     <div
@@ -85,94 +85,83 @@ export default async function Image({ params }: { params: Promise<{ id: string }
         height: 630,
         display: 'flex',
         flexDirection: 'column',
-        background: 'linear-gradient(135deg, #14532d 0%, #166534 45%, #15803d 100%)',
+        background: '#0f0f10',
         fontFamily: 'Noto, sans-serif',
-        padding: '60px 72px',
+        padding: '0',
         position: 'relative',
+        overflow: 'hidden',
       }}
     >
-      {/* Top row: LFD badge + date */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 48 }}>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background:
+            'radial-gradient(1000px 420px at 80% -10%, rgba(22,163,74,0.35), transparent 60%), radial-gradient(700px 300px at -10% 100%, rgba(22,163,74,0.28), transparent 70%)',
+        }}
+      />
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '44px 56px 0 56px', zIndex: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div
+            style={{
+              width: 42,
+              height: 42,
+              background: 'linear-gradient(135deg, #166534, #16a34a)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 6,
+            }}
+          >
+            <span style={{ color: 'white', fontSize: 18, fontWeight: 800, letterSpacing: '-0.5px' }}>LFD</span>
+          </div>
+          <span style={{ color: 'white', fontSize: 48, fontWeight: 800, letterSpacing: '-1px' }}>{topS?.exercise_name?.toUpperCase() ?? 'WORKOUT'}</span>
+        </div>
+
         <div
           style={{
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(255,255,255,0.15)',
-            borderRadius: 16,
-            padding: '10px 24px',
+            maxWidth: 1040,
+            background: 'rgba(0,0,0,0.55)',
+            borderRadius: 14,
+            padding: '12px 18px',
+            borderLeft: '5px solid #16a34a',
           }}
         >
-          <span style={{ color: 'white', fontSize: 28, fontWeight: 800, letterSpacing: '-0.5px' }}>LFD</span>
+          <span style={{ color: '#f4f4f5', fontSize: 40, fontWeight: 700, letterSpacing: '-0.5px' }}>{metaLine}</span>
         </div>
-        <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 26 }}>{dateStr}</span>
-      </div>
 
-      {/* Athlete + workout name */}
-      <div style={{ display: 'flex', flexDirection: 'column', marginBottom: 'auto' }}>
-        <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: 30, marginBottom: 10 }}>
-          {displayName}
-        </span>
-        <span style={{ color: 'white', fontSize: 72, fontWeight: 800, lineHeight: 1.05, letterSpacing: '-2px' }}>
+        <div style={{ marginTop: 8, color: 'rgba(255,255,255,0.9)', fontSize: 42, fontWeight: 700, lineHeight: 1.1 }}>
+          {displayName}'s workout
+        </div>
+        <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 52, fontWeight: 800, letterSpacing: '-1px', maxWidth: 1040, lineHeight: 1.05 }}>
           {workoutName}
-        </span>
+        </div>
       </div>
 
-      {/* Stats row */}
-      <div style={{ display: 'flex', gap: 24, marginTop: 52 }}>
-        {totalVolume > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              background: 'rgba(255,255,255,0.12)',
-              borderRadius: 20,
-              padding: '20px 32px',
-              flex: 1,
-            }}
-          >
-            <span style={{ color: 'white', fontSize: 42, fontWeight: 800, letterSpacing: '-1px' }}>
-              {new Intl.NumberFormat('en-US').format(totalVolume)}
-            </span>
-            <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 22, marginTop: 4 }}>lbs total volume</span>
-          </div>
-        )}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            background: 'rgba(255,255,255,0.12)',
-            borderRadius: 20,
-            padding: '20px 32px',
-            flex: 1,
-          }}
-        >
-          <span style={{ color: 'white', fontSize: 42, fontWeight: 800 }}>
-            {sets.length} sets
-          </span>
-          <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 22, marginTop: 4 }}>
-            across {exerciseCount} exercise{exerciseCount !== 1 ? 's' : ''}
-          </span>
-        </div>
-        {topS && (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              background: 'rgba(255,255,255,0.12)',
-              borderRadius: 20,
-              padding: '20px 32px',
-              flex: 1,
-            }}
-          >
-            <span style={{ color: 'white', fontSize: 42, fontWeight: 800 }}>
-              {topS.weight} × {topS.reps}
-            </span>
-            <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 22, marginTop: 4 }}>
-              top set · {topS.exercise_name}
-            </span>
-          </div>
-        )}
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: 122,
+          background: 'linear-gradient(135deg, #166534, #16a34a)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 56px',
+          zIndex: 3,
+        }}
+      >
+        <span style={{ color: 'white', fontSize: 44, fontWeight: 800, letterSpacing: '-0.6px' }}>
+          Open In LFD Reels
+        </span>
+        <span style={{ color: 'rgba(255,255,255,0.95)', fontSize: 28, fontWeight: 700 }}>
+          {new Intl.NumberFormat('en-US').format(totalVolume)} lbs total
+        </span>
       </div>
     </div>,
     {
