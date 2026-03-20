@@ -68,6 +68,46 @@ export default async function DashboardPage() {
 
   const feedItems = buildFeed((rawWorkouts ?? []) as FeedWorkout[], liftsMap)
 
+  // ── Social data for feed cards ────────────────────────────────────────────
+  const workoutIds = feedItems.map(item => item.workout.id)
+
+  let jorkRows:     { workout_id: string }[] = []
+  let userJorkRows: { workout_id: string }[] = []
+  let commentRows:  { workout_id: string }[] = []
+  let unreadNotifCount = 0
+
+  const notifCountQuery = supabase
+    .from('notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .is('read_at', null)
+
+  if (workoutIds.length > 0) {
+    const [jr, ujr, cr, nc] = await Promise.all([
+      supabase.from('workout_jorks').select('workout_id').in('workout_id', workoutIds),
+      supabase.from('workout_jorks').select('workout_id').eq('user_id', user.id).in('workout_id', workoutIds),
+      supabase.from('workout_comments').select('workout_id').in('workout_id', workoutIds),
+      notifCountQuery,
+    ])
+    jorkRows        = jr.data  ?? []
+    userJorkRows    = ujr.data ?? []
+    commentRows     = cr.data  ?? []
+    unreadNotifCount = nc.count ?? 0
+  } else {
+    const { count } = await notifCountQuery
+    unreadNotifCount = count ?? 0
+  }
+
+  const jorkCountMap: Record<string, number> = {}
+  for (const j of jorkRows) {
+    jorkCountMap[j.workout_id] = (jorkCountMap[j.workout_id] ?? 0) + 1
+  }
+  const userJorkedSet = new Set(userJorkRows.map(j => j.workout_id))
+  const commentCountMap: Record<string, number> = {}
+  for (const c of commentRows) {
+    commentCountMap[c.workout_id] = (commentCountMap[c.workout_id] ?? 0) + 1
+  }
+
   // Profiles for everyone appearing in the feed (drives avatar + display name per card)
   const { data: profilesData } = await supabase
     .from('profiles')
@@ -100,16 +140,37 @@ export default async function DashboardPage() {
         >
           LFD
         </div>
-        <Link
-          href="/profile"
-          className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full text-sm font-bold text-white"
-          style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
-        >
-          {profileMap[user.id]?.avatarUrl
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={profileMap[user.id].avatarUrl!} alt="Profile" className="h-full w-full object-cover" />
-            : currentUserInitial}
-        </Link>
+        <div className="flex items-center gap-2">
+          {/* Notification bell */}
+          <Link
+            href="/notifications"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-100 transition-colors"
+            aria-label="Notifications"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+              <path fillRule="evenodd" d="M10 2a6 6 0 00-6 6c0 1.887-.454 3.665-1.257 5.234a.75.75 0 00.515 1.076 32.91 32.91 0 003.256.508 3.5 3.5 0 006.972 0 32.903 32.903 0 003.256-.508.75.75 0 00.515-1.076A11.448 11.448 0 0116 8a6 6 0 00-6-6zM8.05 14.943a33.54 33.54 0 003.9 0 2 2 0 01-3.9 0z" clipRule="evenodd" />
+            </svg>
+            {unreadNotifCount > 0 && (
+              <span
+                className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
+              >
+                {Math.min(unreadNotifCount, 9)}
+              </span>
+            )}
+          </Link>
+          {/* Profile avatar */}
+          <Link
+            href="/profile"
+            className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full text-sm font-bold text-white"
+            style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
+          >
+            {profileMap[user.id]?.avatarUrl
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={profileMap[user.id].avatarUrl!} alt="Profile" className="h-full w-full object-cover" />
+              : currentUserInitial}
+          </Link>
+        </div>
       </div>
 
       {/* ── Workout CTA ────────────────────────────────────────────── */}
@@ -161,6 +222,10 @@ export default async function DashboardPage() {
                     userInitial={(name[0] ?? 'U').toUpperCase()}
                     username={prof?.username ?? null}
                     avatarUrl={prof?.avatarUrl ?? null}
+                    jorkCount={jorkCountMap[item.workout.id] ?? 0}
+                    commentCount={commentCountMap[item.workout.id] ?? 0}
+                    hasJorked={userJorkedSet.has(item.workout.id)}
+                    currentUserId={user.id}
                   />
                 </li>
               )
