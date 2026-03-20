@@ -26,6 +26,7 @@ import type { FFmpeg } from '@ffmpeg/ffmpeg'
 import { useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { saveSetVideoUrl, deleteSetVideoUrl, saveSetThumbnailUrl } from '../actions'
+import { renderOverlayPng } from '@/lib/overlay-canvas'
 
 // @ffmpeg/core single-thread build — no SharedArrayBuffer / COOP/COEP needed.
 const CDN = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd'
@@ -53,152 +54,6 @@ function getVideoDimensions(file: File): Promise<{ width: number; height: number
     }
     video.onerror = () => { cleanup(); resolve({ width: 1920, height: 1080 }) }
     video.src = url
-  })
-}
-
-const GREEN_DARK = '#166534'
-const GREEN_MID  = '#16a34a'
-const FONT = 'system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif'
-
-/**
- * Renders a full-frame transparent PNG with branded metadata baked into
- * the video itself so clips keep their lifting context when shared outside LFD.
- */
-function renderOverlayPng(
-  data: OverlayData,
-  videoWidth: number,
-  videoHeight: number,
-): Promise<Uint8Array<ArrayBuffer>> {
-  return new Promise((resolve, reject) => {
-    const W = videoWidth
-    const H = videoHeight
-    const canvas = document.createElement('canvas')
-    canvas.width = W
-    canvas.height = H
-    const ctx = canvas.getContext('2d')
-    if (!ctx) { reject(new Error('Canvas unavailable')); return }
-
-    const fitText = (
-      text: string,
-      startSize: number,
-      maxWidth: number,
-      weight: number,
-      minSize = 10,
-    ) => {
-      let size = startSize
-      while (size > minSize) {
-        ctx.font = `${weight} ${size}px ${FONT}`
-        if (ctx.measureText(text).width <= maxWidth) break
-        size -= 1
-      }
-      return size
-    }
-
-    // Corner watermark: square LFD mark.
-    const edgePad = Math.max(12, Math.round(Math.min(W, H) * 0.018))
-    const CORNER = Math.max(34, Math.round(Math.min(W, H) * 0.058))
-    const cornerX = W - CORNER - edgePad
-    const cornerY = H - CORNER - edgePad
-    const cornerGrad = ctx.createLinearGradient(cornerX, cornerY, cornerX + CORNER, cornerY + CORNER)
-    cornerGrad.addColorStop(0, GREEN_DARK)
-    cornerGrad.addColorStop(1, GREEN_MID)
-    ctx.fillStyle = cornerGrad
-    ctx.fillRect(cornerX, cornerY, CORNER, CORNER)
-    ctx.font = `900 ${Math.round(CORNER * 0.34)}px ${FONT}`
-    ctx.fillStyle = '#FFFFFF'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText('LFD', cornerX + CORNER / 2, cornerY + CORNER / 2)
-
-    // Top-left metadata chip stack (kept away from player controls/captions).
-    const title = data.exerciseName.toUpperCase()
-    const parts = [`${data.weight} lbs × ${data.reps}`]
-    if (data.rpe !== null) parts.push(`RPE ${data.rpe}`)
-    if (data.oneRepMax) parts.push(`${Math.round((data.weight / data.oneRepMax) * 100)}% 1RM`)
-    const detailText = parts.join('  •  ')
-
-    const chipGap = Math.max(8, Math.round(Math.min(W, H) * 0.01))
-    const chipPadX = Math.max(12, Math.round(Math.min(W, H) * 0.016))
-    const chipPadY = Math.max(8, Math.round(Math.min(W, H) * 0.01))
-    const chipRadius = Math.max(10, Math.round(Math.min(W, H) * 0.016))
-
-    const titleSize = fitText(title, Math.max(18, Math.round(H * 0.034)), Math.round(W * 0.62), 800, 12)
-    ctx.font = `800 ${titleSize}px ${FONT}`
-    const titleW = ctx.measureText(title).width
-
-    const badgeSize = Math.max(16, Math.round(titleSize * 0.95))
-    const badgeGap = Math.max(8, Math.round(titleSize * 0.35))
-    const titleChipW = Math.min(W - edgePad * 2, chipPadX * 2 + badgeSize + badgeGap + titleW)
-    const titleChipH = Math.max(40, Math.round(titleSize + chipPadY * 2))
-    const titleChipX = edgePad
-    const titleChipY = edgePad
-
-    ctx.fillStyle = 'rgba(0,0,0,0.68)'
-    ctx.beginPath()
-    ctx.roundRect(titleChipX, titleChipY, titleChipW, titleChipH, chipRadius)
-    ctx.fill()
-
-    const titleAccent = ctx.createLinearGradient(titleChipX, titleChipY, titleChipX + 80, titleChipY)
-    titleAccent.addColorStop(0, GREEN_DARK)
-    titleAccent.addColorStop(1, GREEN_MID)
-    ctx.fillStyle = titleAccent
-    ctx.beginPath()
-    ctx.roundRect(titleChipX, titleChipY, Math.min(64, titleChipW * 0.24), 3, 3)
-    ctx.fill()
-
-    const badgeX = titleChipX + chipPadX
-    const badgeY = titleChipY + (titleChipH - badgeSize) / 2
-    const badgeGrad = ctx.createLinearGradient(badgeX, badgeY, badgeX + badgeSize, badgeY + badgeSize)
-    badgeGrad.addColorStop(0, GREEN_DARK)
-    badgeGrad.addColorStop(1, GREEN_MID)
-    ctx.fillStyle = badgeGrad
-    ctx.fillRect(badgeX, badgeY, badgeSize, badgeSize)
-
-    ctx.font = `900 ${Math.max(7, Math.round(badgeSize * 0.42))}px ${FONT}`
-    ctx.fillStyle = '#FFFFFF'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText('LFD', badgeX + badgeSize / 2, badgeY + badgeSize / 2)
-
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'middle'
-    ctx.fillStyle = '#FFFFFF'
-    ctx.font = `800 ${titleSize}px ${FONT}`
-    ctx.fillText(
-      title,
-      badgeX + badgeSize + badgeGap,
-      titleChipY + titleChipH / 2,
-    )
-
-    const detailSize = fitText(detailText, Math.max(14, Math.round(H * 0.028)), Math.round(W * 0.72), 700, 10)
-    ctx.font = `700 ${detailSize}px ${FONT}`
-    const detailW = ctx.measureText(detailText).width
-    const detailChipW = Math.min(W - edgePad * 2, chipPadX * 2 + detailW)
-    const detailChipH = Math.max(34, Math.round(detailSize + chipPadY * 2))
-    const detailChipX = edgePad
-    const detailChipY = titleChipY + titleChipH + chipGap
-
-    ctx.fillStyle = 'rgba(0,0,0,0.62)'
-    ctx.beginPath()
-    ctx.roundRect(detailChipX, detailChipY, detailChipW, detailChipH, chipRadius)
-    ctx.fill()
-
-    ctx.fillStyle = GREEN_MID
-    ctx.fillRect(detailChipX, detailChipY, 3, detailChipH)
-
-    ctx.fillStyle = '#F4F4F5'
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'middle'
-    ctx.font = `700 ${detailSize}px ${FONT}`
-    ctx.fillText(detailText, detailChipX + chipPadX, detailChipY + detailChipH / 2)
-
-    canvas.toBlob((blob) => {
-      if (!blob) { reject(new Error('Canvas toBlob failed')); return }
-      blob.arrayBuffer().then(
-        (buf) => resolve(new Uint8Array(buf) as Uint8Array<ArrayBuffer>),
-        reject,
-      )
-    }, 'image/png')
   })
 }
 
@@ -243,6 +98,8 @@ export type VideoUploadProps = {
   reps: number
   rpe?: number | null
   oneRepMax?: number | null
+  distanceM?: number | null
+  durationSeconds?: number | null
   initialVideoUrl?: string | null
   onOpenReel?: () => void
   onVideoUrlChange?: (url: string | null) => void
@@ -265,6 +122,8 @@ export default function VideoUpload({
   reps,
   rpe,
   oneRepMax,
+  distanceM,
+  durationSeconds,
   initialVideoUrl,
   onOpenReel,
   onVideoUrlChange,
@@ -319,6 +178,8 @@ export default function VideoUpload({
         reps,
         rpe: rpe ?? null,
         oneRepMax: oneRepMax ?? null,
+        distanceM: distanceM ?? null,
+        durationSeconds: durationSeconds ?? null,
       }, videoWidth, videoHeight)
       await ffmpeg.writeFile('overlay.png', overlayPng)
 

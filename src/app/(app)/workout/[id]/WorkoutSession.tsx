@@ -769,6 +769,8 @@ export default function WorkoutSession({
                         reps={repsForVideo}
                         rpe={rpeForVideo}
                         oneRepMax={getOneRepMax(exerciseName, liftOneRepMaxes)}
+                        distanceM={set.distance_m ?? null}
+                        durationSeconds={set.duration_seconds ?? null}
                         initialVideoUrl={set.video_url}
                         onOpenReel={() => openReelAtSet(set.id)}
                         onVideoUrlChange={(url) => {
