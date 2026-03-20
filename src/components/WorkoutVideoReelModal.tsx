@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 type ReelClip = {
@@ -122,6 +122,8 @@ export default function WorkoutVideoReelModal({ clips, initialIndex = 0, onClose
     if (delta > 60) goPrev()
   }, [goNext, goPrev])
 
+  const activeClip = useMemo(() => clips[activeIndex], [clips, activeIndex])
+
   if (!mounted || clips.length === 0) return null
 
   const modal = (
@@ -133,15 +135,15 @@ export default function WorkoutVideoReelModal({ clips, initialIndex = 0, onClose
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      <div className="absolute right-4 top-4 z-20">
+      <div className="absolute left-4 top-4 z-20">
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close reel"
+          aria-label="Back"
           className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/60"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="h-5 w-5" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
       </div>
@@ -155,7 +157,7 @@ export default function WorkoutVideoReelModal({ clips, initialIndex = 0, onClose
           <section
             key={clip.id}
             ref={(el) => { sectionRefs.current[i] = el }}
-            className="relative flex h-screen snap-start items-center justify-center px-2"
+            className="relative flex h-screen snap-start items-start justify-center"
           >
             <video
               ref={(el) => { videoRefs.current[clip.id] = el }}
@@ -166,7 +168,7 @@ export default function WorkoutVideoReelModal({ clips, initialIndex = 0, onClose
               loop
               playsInline
               preload="metadata"
-              className="max-h-[100svh] w-full"
+              className="h-[100svh] w-screen"
               style={{ objectFit: 'contain' }}
               onLoadedData={(e) => {
                 if (i === activeIndex) {
@@ -177,6 +179,20 @@ export default function WorkoutVideoReelModal({ clips, initialIndex = 0, onClose
           </section>
         ))}
       </div>
+
+      {activeClip && (
+        <div
+          className="pointer-events-none absolute left-4 right-4 z-20"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 56px)' }}
+        >
+          <div className="rounded-xl bg-black/55 px-3 py-2.5 backdrop-blur">
+            <p className="truncate text-sm font-semibold text-white">{activeClip.title}</p>
+            {activeClip.subtitle ? (
+              <p className="mt-0.5 truncate text-xs text-zinc-200">{activeClip.subtitle}</p>
+            ) : null}
+          </div>
+        </div>
+      )}
     </div>
   )
 

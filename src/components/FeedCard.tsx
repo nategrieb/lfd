@@ -148,12 +148,20 @@ export default function FeedCard({ item, displayName, userInitial, username, ava
   const [reelStartIndex, setReelStartIndex] = useState<number | null>(null)
 
   const sets = workout.sets ?? []
+  const orderedSets = useMemo(() => {
+    return [...sets].sort((a, b) => {
+      const ta = a.created_at ? new Date(a.created_at).getTime() : 0
+      const tb = b.created_at ? new Date(b.created_at).getTime() : 0
+      if (ta !== tb) return ta - tb
+      return a.id.localeCompare(b.id)
+    })
+  }, [sets])
 
   const videoReelClips = useMemo(() => {
     const countByExercise: Record<string, number> = {}
     const clips: Array<{ id: string; src: string; title: string; subtitle: string }> = []
 
-    for (const set of sets) {
+    for (const set of orderedSets) {
       if (!set.video_url) continue
       countByExercise[set.exercise_name] = (countByExercise[set.exercise_name] ?? 0) + 1
       const setNum = countByExercise[set.exercise_name]
@@ -166,7 +174,7 @@ export default function FeedCard({ item, displayName, userInitial, username, ava
     }
 
     return clips
-  }, [sets])
+  }, [orderedSets])
 
   const dateStr = new Date(workout.created_at).toLocaleDateString(undefined, {
     weekday: 'short',

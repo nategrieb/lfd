@@ -17,7 +17,7 @@ export default async function YouPage() {
   // All completed workouts with full set data (drives stats + activity list)
   const { data: rawWorkouts } = await supabase
     .from('workouts')
-    .select('id, name, created_at, user_id, sets(id, exercise_name, weight, reps, rpe, video_url)')
+    .select('id, name, created_at, user_id, sets(id, exercise_name, weight, reps, rpe, video_url, created_at)')
     .eq('user_id', user.id)
     .eq('status', 'completed')
     .order('created_at', { ascending: false })

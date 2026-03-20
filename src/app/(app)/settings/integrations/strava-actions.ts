@@ -114,6 +114,8 @@ export async function syncWorkoutToStrava(
   const shareLink = `${base}/w/${workoutId}`
   const locationPart = workout.location ? `  ·  ${workout.location}` : ''
   const workoutName = workout.name?.trim() || 'Weight Training'
+  const targetStartMs = new Date(workout.created_at).getTime()
+  const targetNameLower = workoutName.trim().toLowerCase()
 
   const description = [
     `🟩 LFD  ${workoutName}${locationPart}`,
@@ -134,6 +136,36 @@ export async function syncWorkoutToStrava(
     start_date_local: new Date(workout.created_at).toISOString().replace(/\.\d{3}Z$/, 'Z'),
     elapsed_time:     3600,
     description,
+  }
+
+  async function findExistingActivityId(token: string): Promise<number | null> {
+    const res = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=30&page=1', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      cache: 'no-store',
+    })
+
+    if (!res.ok) return null
+
+    const activities = await res.json() as Array<{
+      id: number
+      name?: string
+      start_date_local?: string
+      sport_type?: string
+      type?: string
+    }>
+
+    for (const a of activities) {
+      const candidateStart = a.start_date_local ? new Date(a.start_date_local).getTime() : NaN
+      const sameName = (a.name ?? '').trim().toLowerCase() === targetNameLower
+      const sameType = (a.sport_type === 'WeightTraining' || a.type === 'WeightTraining')
+      const closeInTime = Number.isFinite(candidateStart) && Math.abs(candidateStart - targetStartMs) <= 3 * 60 * 1000
+      if (sameName && sameType && closeInTime) return a.id
+    }
+
+    return null
   }
 
   async function createActivity(token: string) {
@@ -162,6 +194,14 @@ export async function syncWorkoutToStrava(
       stravaRes = retry.res
       msg = retry.text
     }
+  }
+
+  // Strava sometimes returns 409 {"message":"error"} for duplicate/conflict creates.
+  // Try to resolve by finding the already-created activity and treat as success.
+  if (!stravaRes.ok && stravaRes.status === 409) {
+    const existingId = await findExistingActivityId(accessToken)
+    if (existingId) return { success: true, stravaId: existingId }
+    return { error: 'This workout may already be synced on Strava (duplicate conflict).' }
   }
 
   if (!stravaRes.ok) return { error: `Strava error ${stravaRes.status}: ${msg}` }

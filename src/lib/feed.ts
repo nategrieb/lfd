@@ -24,6 +24,7 @@ export type FeedSet = {
   reps: number
   rpe: number | null
   video_url: string | null
+  created_at?: string
 }
 
 export type MediaItem =
