@@ -61,11 +61,11 @@ export default async function UserProfilePage({ params }: Props) {
   // but the feed algorithm degrades gracefully (just skips the %1RM badge).
   const feedItems = buildFeed(workouts, {})
 
-  // Stats
+  // Stats — derived from feedItems so counts match what's actually shown
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-  const totalSets = workouts.reduce((acc, w) => acc + (w.sets?.length ?? 0), 0)
-  const thisMonthCount = workouts.filter((w) => new Date(w.created_at) >= startOfMonth).length
+  const totalSets = feedItems.reduce((acc, item) => acc + (item.workout.sets?.length ?? 0), 0)
+  const thisMonthCount = feedItems.filter((item) => new Date(item.workout.created_at) >= startOfMonth).length
 
   const displayName = (profile as any).display_name || profile.username || username
   const initial = (displayName[0] ?? '?').toUpperCase()
@@ -119,7 +119,7 @@ export default async function UserProfilePage({ params }: Props) {
       {/* Stats */}
       <section className="mb-8 grid grid-cols-3 gap-3">
         <div className="rounded-2xl border border-zinc-100 bg-white shadow-sm p-4 text-center">
-          <p className="text-2xl font-bold text-zinc-900">{workouts.length}</p>
+          <p className="text-2xl font-bold text-zinc-900">{feedItems.length}</p>
           <p className="mt-1 text-xs text-zinc-500">Workouts</p>
         </div>
         <div className="rounded-2xl border border-zinc-100 bg-white shadow-sm p-4 text-center">
