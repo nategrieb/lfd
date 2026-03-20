@@ -81,10 +81,10 @@ export async function syncWorkoutToStrava(
 
   if (!workout) return { error: 'Workout not found' }
 
-  // Fetch all sets in order, including rpe and thumbnail for photo upload
+  // Fetch all sets in order — select only columns that always exist
   const { data: sets } = await supabase
     .from('sets')
-    .select('exercise_name, weight, reps, rpe, thumbnail_url')
+    .select('exercise_name, weight, reps, rpe')
     .eq('workout_id', workoutId)
     .order('created_at', { ascending: true })
 
@@ -150,28 +150,6 @@ export async function syncWorkoutToStrava(
   }
 
   const activity = await stravaRes.json() as { id: number }
-
-  // Best-effort: upload the first available set thumbnail as a Strava photo
-  const firstThumb = allSets.find((s) => s.thumbnail_url)?.thumbnail_url
-  if (firstThumb) {
-    try {
-      const imgRes = await fetch(firstThumb, { cache: 'no-store' })
-      if (imgRes.ok) {
-        const imgBlob = await imgRes.blob()
-        const form = new FormData()
-        form.append('file', imgBlob, 'thumbnail.jpg')
-        await fetch(`https://www.strava.com/api/v3/activities/${activity.id}/photos`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-          body: form,
-          cache: 'no-store',
-        })
-      }
-    } catch {
-      // Photo upload is non-critical — activity was already created
-    }
-  }
-
   return { success: true, stravaId: activity.id }
 }
 
