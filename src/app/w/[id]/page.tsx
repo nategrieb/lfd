@@ -93,7 +93,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   // Use image-only metadata for predictable, branded unfurls across messaging apps.
   // We intentionally omit og:video so link previews prioritize the LFD card.
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? ''
   const pagePath = `/w/${id}`
   const ogImagePath = `${pagePath}/opengraph-image`
 
@@ -103,7 +102,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      url: base ? `${base}${pagePath}` : pagePath,
+      url: pagePath,
       type: 'website',
       images: [{ url: ogImagePath, width: 1200, height: 630 }],
     },
