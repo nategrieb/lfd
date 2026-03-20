@@ -61,12 +61,8 @@ const GREEN_MID  = '#16a34a'
 const FONT = 'system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif'
 
 /**
- * Renders a full-frame transparent PNG containing:
- *   • LFD gold badge — top-right corner (channel-bug style)
- *   • Info strip      — bottom 120px: exercise name, weight×reps, RPE/1RM badges
- *
- * Using a full-frame canvas (vs a cropped strip) lets the LFD badge live at
- * the real top-right of the video. FFmpeg composites it with overlay=0:0.
+ * Renders a full-frame transparent PNG with branded metadata baked into
+ * the video itself so clips keep their lifting context when shared outside LFD.
  */
 function renderOverlayPng(
   data: OverlayData,
@@ -82,102 +78,68 @@ function renderOverlayPng(
     const ctx = canvas.getContext('2d')
     if (!ctx) { reject(new Error('Canvas unavailable')); return }
 
-    // ── LFD brand badge (top-right) ────────────────────────────────────
-    // Solid square green gradient badge — matches app brand mark.
-    const BADGE_SIZE = 56
-    const badgeX = W - BADGE_SIZE - 20
-    const badgeY = 20
-
-    const badgeGrad = ctx.createLinearGradient(badgeX, badgeY, badgeX + BADGE_SIZE, badgeY + BADGE_SIZE)
-    badgeGrad.addColorStop(0, GREEN_DARK)
-    badgeGrad.addColorStop(1, GREEN_MID)
-    ctx.fillStyle = badgeGrad
-    ctx.fillRect(badgeX, badgeY, BADGE_SIZE, BADGE_SIZE)
-
-    ctx.font = `900 16px ${FONT}`
+    // Corner watermark: square LFD mark.
+    const CORNER = Math.max(40, Math.round(Math.min(W, H) * 0.055))
+    const cornerX = W - CORNER - 20
+    const cornerY = 20
+    const cornerGrad = ctx.createLinearGradient(cornerX, cornerY, cornerX + CORNER, cornerY + CORNER)
+    cornerGrad.addColorStop(0, GREEN_DARK)
+    cornerGrad.addColorStop(1, GREEN_MID)
+    ctx.fillStyle = cornerGrad
+    ctx.fillRect(cornerX, cornerY, CORNER, CORNER)
+    ctx.font = `900 ${Math.round(CORNER * 0.34)}px ${FONT}`
     ctx.fillStyle = '#FFFFFF'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText('LFD', badgeX + BADGE_SIZE / 2, badgeY + BADGE_SIZE / 2)
+    ctx.fillText('LFD', cornerX + CORNER / 2, cornerY + CORNER / 2)
 
-    // ── Bottom info strip ───────────────────────────────────────────────
-    const STRIP_H = 120
-    const stripY = H - STRIP_H
+    // In-frame metadata card at bottom-left.
+    const cardW = Math.min(W - 32, Math.max(320, Math.round(W * 0.78)))
+    const cardH = Math.max(86, Math.round(H * 0.14))
+    const cardX = 16
+    const cardY = H - cardH - 18
+    const cardR = 14
 
-    ctx.fillStyle = 'rgba(0,0,0,0.85)'
-    ctx.fillRect(0, stripY, W, STRIP_H)
+    ctx.fillStyle = 'rgba(0,0,0,0.66)'
+    ctx.beginPath()
+    ctx.roundRect(cardX, cardY, cardW, cardH, cardR)
+    ctx.fill()
 
-    // Green accent bar at top edge of strip — visual thread to the badge.
+    // Green accent bar to carry brand color.
     ctx.fillStyle = GREEN_MID
-    ctx.fillRect(0, stripY, W, 4)
+    ctx.beginPath()
+    ctx.roundRect(cardX, cardY, cardW, 4, 4)
+    ctx.fill()
 
-    // Exercise name — largest, white, left
-    ctx.font = `800 44px ${FONT}`
+    // Small brand square inside card.
+    const badgeSize = 18
+    const badgeX = cardX + 14
+    const badgeY = cardY + 12
+    const badgeGrad = ctx.createLinearGradient(badgeX, badgeY, badgeX + badgeSize, badgeY + badgeSize)
+    badgeGrad.addColorStop(0, GREEN_DARK)
+    badgeGrad.addColorStop(1, GREEN_MID)
+    ctx.fillStyle = badgeGrad
+    ctx.fillRect(badgeX, badgeY, badgeSize, badgeSize)
+    ctx.font = `900 8px ${FONT}`
     ctx.fillStyle = '#FFFFFF'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('LFD', badgeX + badgeSize / 2, badgeY + badgeSize / 2)
+
+    const title = data.exerciseName.toUpperCase()
+    const parts = [`${data.weight} lbs x ${data.reps}`]
+    if (data.rpe !== null) parts.push(`RPE ${data.rpe}`)
+    if (data.oneRepMax) parts.push(`${Math.round((data.weight / data.oneRepMax) * 100)}% 1RM`)
+
     ctx.textAlign = 'left'
     ctx.textBaseline = 'alphabetic'
-    ctx.fillText(data.exerciseName.toUpperCase(), 26, stripY + 66)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = `800 ${Math.max(16, Math.round(cardH * 0.24))}px ${FONT}`
+    ctx.fillText(title, badgeX + badgeSize + 10, cardY + 27)
 
-    // Weight × reps — green, left. Brand color on the key number.
-    ctx.font = `500 28px ${FONT}`
-    ctx.fillStyle = GREEN_MID
-    ctx.textAlign = 'left'
-    ctx.fillText(`${data.weight} lbs × ${data.reps} reps`, 26, stripY + 106)
-
-    // ── Stat badges (right side) ────────────────────────────────────────
-    // RPE  → filled gold pill (most actionable — effort rating)
-    // %1RM → outlined gold pill (contextual — relative intensity)
-    const statItems: Array<{ label: string; filled: boolean }> = []
-    if (data.rpe !== null) statItems.push({ label: `RPE ${data.rpe}`, filled: true })
-    if (data.oneRepMax) {
-      statItems.push({
-        label: `${Math.round((data.weight / data.oneRepMax) * 100)}% 1RM`,
-        filled: false,
-      })
-    }
-
-    if (statItems.length > 0) {
-      const PILL_H = 40
-      const PILL_PAD_X = 18
-      const PILL_GAP = 10
-      const PILL_R = PILL_H / 2
-      ctx.font = `700 22px ${FONT}`
-
-      const pillWidths = statItems.map(s => ctx.measureText(s.label).width + PILL_PAD_X * 2)
-      const totalPillW = pillWidths.reduce((a, b) => a + b, 0) + PILL_GAP * (statItems.length - 1)
-
-      // Vertically center badges in the lower half of the strip
-      const pillCenterY = stripY + STRIP_H / 2 + 16
-      let px = W - 26 - totalPillW
-
-      statItems.forEach((stat, i) => {
-        const pw = pillWidths[i]
-        const py = pillCenterY - PILL_H / 2
-
-        if (stat.filled) {
-          const pillGrad = ctx.createLinearGradient(px, py, px + pw, py + PILL_H)
-          pillGrad.addColorStop(0, GREEN_DARK)
-          pillGrad.addColorStop(1, GREEN_MID)
-          ctx.fillStyle = pillGrad
-          ctx.beginPath()
-          ctx.roundRect(px, py, pw, PILL_H, PILL_R)
-          ctx.fill()
-          ctx.fillStyle = '#FFFFFF'
-        } else {
-          ctx.strokeStyle = GREEN_MID
-          ctx.lineWidth = 2
-          ctx.beginPath()
-          ctx.roundRect(px + 1, py + 1, pw - 2, PILL_H - 2, PILL_R)
-          ctx.stroke()
-          ctx.fillStyle = GREEN_MID
-        }
-
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(stat.label, px + pw / 2, pillCenterY)
-        px += pw + PILL_GAP
-      })
-    }
+    ctx.fillStyle = '#D4D4D8'
+    ctx.font = `600 ${Math.max(14, Math.round(cardH * 0.22))}px ${FONT}`
+    ctx.fillText(parts.join('  •  '), cardX + 14, cardY + cardH - 16)
 
     canvas.toBlob((blob) => {
       if (!blob) { reject(new Error('Canvas toBlob failed')); return }

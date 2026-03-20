@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 type ReelClip = {
@@ -100,8 +100,6 @@ export default function WorkoutVideoReelModal({ clips, initialIndex = 0, onClose
     if (delta > 60) goPrev()
   }, [goNext, goPrev])
 
-  const activeClip = useMemo(() => clips[activeIndex], [clips, activeIndex])
-
   if (!mounted || clips.length === 0) return null
 
   const modal = (
@@ -113,17 +111,12 @@ export default function WorkoutVideoReelModal({ clips, initialIndex = 0, onClose
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      <div className="pointer-events-none absolute left-0 right-0 top-0 z-20 flex items-start justify-between p-4">
-        <div className="max-w-[70%] rounded-xl bg-black/50 px-3 py-2 backdrop-blur">
-          <p className="truncate text-sm font-semibold">{activeClip?.title}</p>
-          {activeClip?.subtitle ? <p className="truncate text-xs text-zinc-300">{activeClip.subtitle}</p> : null}
-        </div>
-
+      <div className="absolute right-4 top-4 z-20">
         <button
           type="button"
           onClick={onClose}
           aria-label="Close reel"
-          className="pointer-events-auto ml-2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/60"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/60"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -136,16 +129,24 @@ export default function WorkoutVideoReelModal({ clips, initialIndex = 0, onClose
       </div>
 
       <div ref={containerRef} className="h-full snap-y snap-mandatory overflow-y-auto">
-        {clips.map((clip) => (
-          <section key={clip.id} className="flex h-screen snap-start items-center justify-center px-2">
+        {clips.map((clip, i) => (
+          <section key={clip.id} className="relative flex h-screen snap-start items-center justify-center px-2">
             <video
               ref={(el) => { videoRefs.current[clip.id] = el }}
               src={clip.src}
+              autoPlay={i === activeIndex}
               controls
+              muted
+              loop
               playsInline
               preload="metadata"
               className="max-h-[100svh] w-full"
               style={{ objectFit: 'contain' }}
+              onLoadedData={(e) => {
+                if (i === activeIndex) {
+                  void e.currentTarget.play().catch(() => {})
+                }
+              }}
             />
           </section>
         ))}
