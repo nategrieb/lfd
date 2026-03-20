@@ -145,11 +145,13 @@ export default async function Image({ params }: { params: Promise<{ id: string }
       firstVideoSet?.thumbnail_url ??
       (firstVideoSet?.video_url ? deriveThumbFromVideoUrl(firstVideoSet.video_url) : null)
 
-    // ─── VIDEO CARD: thumbnail bg + British Racing Green branded strip ─────
+    // ─── VIDEO CARD: green strip at TOP (iMessage crops bottom, never top) ──
     if (thumbUrl) {
       const statLine = topS
         ? `${topS.weight} lbs × ${topS.reps}${topS.rpe != null ? `  ·  RPE ${topS.rpe}` : ''}`
         : `${volumeStr} lbs total`
+
+      const STRIP_H = 112
 
       return new ImageResponse(
         <div
@@ -157,48 +159,18 @@ export default async function Image({ params }: { params: Promise<{ id: string }
             width: 1200,
             height: 630,
             display: 'flex',
-            position: 'relative',
+            flexDirection: 'column',
             overflow: 'hidden',
             background: '#000',
           }}
         >
-          {/* Thumbnail fills frame */}
-          <img
-            src={thumbUrl}
-            width={1200}
-            height={630}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-            }}
-          />
-          {/* Soft gradient fade above the green strip */}
+          {/* ── British Racing Green strip at the TOP ── */}
           <div
             style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              bottom: 110,
-              height: 160,
-              background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 100%)',
-              display: 'flex',
-            }}
-          />
-          {/* British Racing Green strip */}
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: 110,
-              background: 'linear-gradient(90deg, #14532d 0%, #166534 60%, #166534 100%)',
+              width: 1200,
+              height: STRIP_H,
+              flexShrink: 0,
+              background: 'linear-gradient(90deg, #14532d 0%, #166534 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -222,7 +194,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
                 </span>
                 <span
                   style={{
-                    color: 'rgba(255,255,255,0.75)',
+                    color: 'rgba(255,255,255,0.7)',
                     fontSize: 22,
                     fontWeight: 700,
                     lineHeight: 1,
@@ -243,6 +215,29 @@ export default async function Image({ params }: { params: Promise<{ id: string }
             >
               {statLine}
             </span>
+          </div>
+
+          {/* ── Thumbnail fills the remaining height ── */}
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            <img
+              src={thumbUrl}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'center top',
+              }}
+            />
           </div>
         </div>,
         { width: 1200, height: 630, fonts },
