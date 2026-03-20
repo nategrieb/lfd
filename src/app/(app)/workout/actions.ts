@@ -347,6 +347,14 @@ export async function saveSetVideoUrl({
     return { success: false, message: 'Not authenticated.' }
   }
 
+  // Fetch the old URLs before overwriting so we can delete the orphaned files.
+  const { data: existing } = await supabase
+    .from('sets')
+    .select('video_url, thumbnail_url')
+    .eq('id', setId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
   const { error } = await supabase
     .from('sets')
     .update({ video_url: videoUrl })
@@ -355,6 +363,21 @@ export async function saveSetVideoUrl({
 
   if (error) {
     return { success: false, message: error.message }
+  }
+
+  // Best-effort: delete the old video + thumbnail files that are now orphaned.
+  const storagePrefix = '/storage/v1/object/public/workout-videos/'
+  const toDelete: string[] = []
+  for (const rawUrl of [existing?.video_url, existing?.thumbnail_url]) {
+    if (!rawUrl) continue
+    const idx = rawUrl.indexOf(storagePrefix)
+    if (idx >= 0) {
+      const tail = rawUrl.slice(idx + storagePrefix.length)
+      toDelete.push(tail.includes('?') ? tail.slice(0, tail.indexOf('?')) : tail)
+    }
+  }
+  if (toDelete.length > 0) {
+    await supabase.storage.from('workout-videos').remove(toDelete).catch(() => {})
   }
 
   return { success: true }
@@ -414,13 +437,36 @@ export async function deleteSetVideoUrl(
 
   if (!user?.id) return { success: false, message: 'Not authenticated.' }
 
+  // Fetch old URLs before nulling so we can clean up Storage.
+  const { data: existing } = await supabase
+    .from('sets')
+    .select('video_url, thumbnail_url')
+    .eq('id', setId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
   const { error } = await supabase
     .from('sets')
-    .update({ video_url: null })
+    .update({ video_url: null, thumbnail_url: null })
     .eq('id', setId)
     .eq('user_id', user.id) // ownership check
 
   if (error) return { success: false, message: error.message }
+
+  // Best-effort: delete the orphaned video + thumbnail files from Storage.
+  const storagePrefix = '/storage/v1/object/public/workout-videos/'
+  const toDelete: string[] = []
+  for (const rawUrl of [existing?.video_url, existing?.thumbnail_url]) {
+    if (!rawUrl) continue
+    const idx = rawUrl.indexOf(storagePrefix)
+    if (idx >= 0) {
+      const tail = rawUrl.slice(idx + storagePrefix.length)
+      toDelete.push(tail.includes('?') ? tail.slice(0, tail.indexOf('?')) : tail)
+    }
+  }
+  if (toDelete.length > 0) {
+    await supabase.storage.from('workout-videos').remove(toDelete).catch(() => {})
+  }
 
   return { success: true }
 }
