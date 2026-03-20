@@ -5,7 +5,7 @@ import { createServerSupabase } from '@/lib/supabase-server'
 
 // ── Token refresh ─────────────────────────────────────────────────────────
 
-async function getFreshAccessToken(userId: string): Promise<string | null> {
+async function getFreshAccessToken(userId: string, forceRefresh = false): Promise<string | null> {
   const supabase = await createServerSupabase()
 
   const { data: profile } = await supabase
@@ -22,7 +22,7 @@ async function getFreshAccessToken(userId: string): Promise<string | null> {
   const bufferMs = 5 * 60 * 1000 // refresh 5 min before expiry
 
   // Still valid
-  if (profile.strava_access_token && expiresAt > Date.now() + bufferMs) {
+  if (!forceRefresh && profile.strava_access_token && expiresAt > Date.now() + bufferMs) {
     return profile.strava_access_token
   }
 
@@ -68,7 +68,7 @@ export async function syncWorkoutToStrava(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user?.id) return { error: 'Not authenticated' }
 
-  const accessToken = await getFreshAccessToken(user.id)
+  let accessToken = await getFreshAccessToken(user.id)
   if (!accessToken) return { error: 'Strava not connected' }
 
   // Fetch workout (includes location)
@@ -134,21 +134,35 @@ export async function syncWorkoutToStrava(
     description,
   }
 
-  const stravaRes = await fetch('https://www.strava.com/api/v3/activities', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type':  'application/json',
-    },
-    body: JSON.stringify(body),
-    cache: 'no-store',
-  })
-
-  const msg = await stravaRes.text()
-
-  if (!stravaRes.ok) {
-    return { error: `Strava error ${stravaRes.status}: ${msg}` }
+  async function createActivity(token: string) {
+    const res = await fetch('https://www.strava.com/api/v3/activities', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+    })
+    const text = await res.text()
+    return { res, text }
   }
+
+  let { res: stravaRes, text: msg } = await createActivity(accessToken)
+
+  // Some tokens can become invalid server-side before local expiry.
+  // Retry once with a forced refresh to self-heal without reconnecting.
+  if (!stravaRes.ok && (stravaRes.status === 401 || stravaRes.status === 404)) {
+    const refreshed = await getFreshAccessToken(user.id, true)
+    if (refreshed) {
+      accessToken = refreshed
+      const retry = await createActivity(accessToken)
+      stravaRes = retry.res
+      msg = retry.text
+    }
+  }
+
+  if (!stravaRes.ok) return { error: `Strava error ${stravaRes.status}: ${msg}` }
 
   const activity = JSON.parse(msg) as { id: number }
   return { success: true, stravaId: activity.id }
