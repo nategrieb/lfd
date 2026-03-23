@@ -209,15 +209,15 @@ export default async function PublicWorkoutPage({ params }: Props) {
                 </p>
                 <ul className="mt-3 space-y-1.5">
                   {exSets.map((s, i) => (
-                    <li key={s.id} className="flex items-center justify-between text-sm">
-                      <span className="text-zinc-400">Set {i + 1}</span>
-                      <span className="font-medium text-zinc-700">
+                    <li key={s.id} className="flex items-center text-sm">
+                      <span className="w-12 shrink-0 text-zinc-400">Set {i + 1}</span>
+                      <span className="flex-1 font-medium text-zinc-700">
                         {isCardio(s)
                           ? [(s.distance_m ?? 0) > 0 ? fmtDist(s.distance_m!) : null, (s.duration_seconds ?? 0) > 0 ? fmtDur(s.duration_seconds!) : null].filter(Boolean).join(' · ')
                           : <>{s.weight} lbs × {s.reps}{s.rpe != null && <span className="ml-2 text-xs text-zinc-400">RPE {s.rpe}</span>}</>}
                       </span>
                       {s.video_url && (
-                        <span className="ml-2 rounded-lg bg-zinc-50 px-2 py-0.5 text-xs font-semibold text-zinc-500">
+                        <span className="rounded-lg bg-zinc-50 px-2 py-0.5 text-xs font-semibold text-zinc-500">
                           {s.id === hero?.id ? 'Playing above + in reel' : 'Clip available in reel'}
                         </span>
                       )}
