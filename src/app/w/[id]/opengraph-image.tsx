@@ -2,6 +2,7 @@ import { ImageResponse } from 'next/og'
 import { createClient } from '@supabase/supabase-js'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
+import { getSupabasePublishableOrAnonKey, getSupabaseUrl } from '@/lib/supabase-config'
 
 export const runtime = 'nodejs'
 export const size = { width: 1200, height: 630 }
@@ -105,8 +106,9 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     const { id } = await params
 
     const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+      getSupabaseUrl(),
+      getSupabasePublishableOrAnonKey(),
+      { db: { schema: 'lfd' } },
     )
 
     const { data: workout } = await supabase

@@ -1,8 +1,9 @@
 import { createBrowserClient } from '@supabase/ssr'
+import { getSupabasePublishableOrAnonKey, getSupabaseUrl } from './supabase-config'
 
 export const createClient = () =>
   createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    getSupabaseUrl(),
+    getSupabasePublishableOrAnonKey(),
     { db: { schema: 'lfd' } }
   )

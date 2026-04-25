@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import type { Metadata } from 'next'
 import PublicWorkoutVideoReel from './PublicWorkoutVideoReel'
+import { getSupabasePublishableOrAnonKey, getSupabaseUrl } from '@/lib/supabase-config'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,8 +11,9 @@ type Props = { params: Promise<{ id: string }> }
 // Public anon client — no cookies needed, works for unauthenticated visitors.
 function anonSupabase() {
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    getSupabaseUrl(),
+    getSupabasePublishableOrAnonKey(),
+    { db: { schema: 'lfd' } }
   )
 }
 
