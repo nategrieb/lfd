@@ -65,7 +65,7 @@ export async function recalculateFutureWorkouts(
   userId: string,
   category: 'squat' | 'bench' | 'deadlift',
   newMax: number,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<any, any, any, any, any>,
 ): Promise<{ updated: number }> {
   // 1. Get all planned scheduled_workouts for this user
   const { data: sws } = await supabase
