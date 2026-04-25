@@ -9,6 +9,7 @@ export default async function proxy(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
+      db: { schema: 'lfd' },
       cookies: {
         getAll() {
           return request.cookies.getAll()
