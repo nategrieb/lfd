@@ -109,13 +109,13 @@ export async function addSet(formData: FormData) {
   // Determine the next set order for this workout
   const { data: lastSet } = await supabase
     .from('sets')
-    .select('set_order')
+    .select('sort_order')
     .eq('workout_id', workoutId)
-    .order('set_order', { ascending: false })
+    .order('sort_order', { ascending: false })
     .limit(1)
     .maybeSingle()
 
-  const nextOrder = (lastSet?.set_order ?? 0) + 1
+  const nextOrder = (lastSet?.sort_order ?? 0) + 1
 
   const { data, error } = await supabase
     .from('sets')
@@ -126,7 +126,7 @@ export async function addSet(formData: FormData) {
       weight,
       reps,
       rpe,
-      set_order: nextOrder,
+      sort_order: nextOrder,
     })
     .select('*')
     .single()
