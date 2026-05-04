@@ -73,7 +73,7 @@ export default function OnboardingForm() {
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-900/30 border border-red-700/40 px-4 py-3 text-sm text-red-300">
+        <p className="rounded-lg bg-red-50 border border-red-300 px-4 py-3 text-sm text-red-800">
           {error}
         </p>
       )}

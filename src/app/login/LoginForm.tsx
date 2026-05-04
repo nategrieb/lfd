@@ -74,7 +74,7 @@ export default function LoginForm() {
       </div>
 
       {error ? (
-        <p className="rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</p>
+        <p className="rounded-lg bg-red-50 border border-red-300 px-4 py-3 text-sm text-red-800">{error}</p>
       ) : null}
 
       <button
