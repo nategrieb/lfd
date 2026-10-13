@@ -1,6 +1,12 @@
 import LoginForm from './LoginForm'
 
-export default function LoginPage() {
+type LoginPageProps = {
+  searchParams: Promise<{ error?: string }>
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const { error } = await searchParams
+
   return (
     <main className="min-h-screen bg-white flex items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl border border-zinc-100 bg-white p-10 shadow-sm">
@@ -14,7 +20,7 @@ export default function LoginPage() {
           <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900">Lift For Dan</h1>
           <p className="mt-2 text-sm text-zinc-400">Login or create an account to start tracking lifts.</p>
         </div>
-        <LoginForm />
+        <LoginForm initialError={error === 'google' ? "Google sign-in didn't complete. Please try again." : null} />
       </div>
     </main>
   )
