@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { createClient } from '@/lib/supabase'
+import GoogleSignIn from '@/components/GoogleSignIn'
 import { login, signup } from './actions'
 
 export default function LoginForm({ initialError = null }: { initialError?: string | null }) {
@@ -9,16 +9,6 @@ export default function LoginForm({ initialError = null }: { initialError?: stri
   const [error, setError] = useState<string | null>(initialError)
   const [confirmed, setConfirmed] = useState(false)
   const [isPending, startTransition] = useTransition()
-
-  const signInWithGoogle = async () => {
-    setError(null)
-    const { error: oauthError } = await createClient().auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    })
-
-    if (oauthError) setError("Couldn't start Google sign-in. Please try again.")
-  }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -56,13 +46,7 @@ export default function LoginForm({ initialError = null }: { initialError?: stri
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <button
-        type="button"
-        onClick={signInWithGoogle}
-        className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-50"
-      >
-        Continue with Google
-      </button>
+      <GoogleSignIn />
 
       <div className="flex items-center gap-3 text-xs uppercase tracking-widest text-zinc-400" aria-hidden="true">
         <span className="h-px flex-1 bg-zinc-200" />
