@@ -22,6 +22,9 @@ declare global {
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
 const SCRIPT_SRC = 'https://accounts.google.com/gsi/client'
+const GIVE_UP_AFTER_MS = 8000
+
+type Status = 'loading' | 'ready' | 'failed'
 
 /** Google wants a SHA-256 hash of the nonce; Supabase wants the original so it can check they match. */
 async function makeNonce() {
@@ -36,11 +39,11 @@ async function makeNonce() {
 /**
  * Google's own sign-in button, shown in a popup on this site, so the account chooser says
  * nategrieb.com instead of the Supabase address. Only active when NEXT_PUBLIC_GOOGLE_CLIENT_ID
- * is set; otherwise (or if the popup can't load) the original redirect button is used.
+ * is set; if it is missing, or the popup can't load, a plain redirect button is shown instead.
  */
 export default function GoogleSignIn({ afterSignIn = '/' }: { afterSignIn?: string }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const [popupReady, setPopupReady] = useState(false)
+  const [status, setStatus] = useState<Status>(GOOGLE_CLIENT_ID ? 'loading' : 'failed')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -49,6 +52,7 @@ export default function GoogleSignIn({ afterSignIn = '/' }: { afterSignIn?: stri
     if (!clientId) return
 
     let cancelled = false
+    const giveUp = window.setTimeout(() => setStatus((current) => (current === 'ready' ? current : 'failed')), GIVE_UP_AFTER_MS)
 
     const start = async () => {
       const google = window.google?.accounts.id
@@ -90,7 +94,8 @@ export default function GoogleSignIn({ afterSignIn = '/' }: { afterSignIn?: stri
         logo_alignment: 'left',
         width: Math.min(400, Math.max(200, container.clientWidth || 320)),
       })
-      setPopupReady(true)
+      window.clearTimeout(giveUp)
+      setStatus('ready')
     }
 
     let script = document.querySelector<HTMLScriptElement>(`script[src="${SCRIPT_SRC}"]`)
@@ -105,10 +110,12 @@ export default function GoogleSignIn({ afterSignIn = '/' }: { afterSignIn?: stri
         document.head.appendChild(script)
       }
       script.addEventListener('load', () => void start())
+      script.addEventListener('error', () => setStatus('failed'))
     }
 
     return () => {
       cancelled = true
+      window.clearTimeout(giveUp)
     }
   }, [afterSignIn])
 
@@ -126,19 +133,26 @@ export default function GoogleSignIn({ afterSignIn = '/' }: { afterSignIn?: stri
 
   return (
     <div className="space-y-3">
-      {GOOGLE_CLIENT_ID ? <div ref={containerRef} className="flex min-h-[44px] justify-center" /> : null}
-
-      {popupReady ? (
-        <button type="button" onClick={signInWithRedirect} className="text-xs text-zinc-500 underline underline-offset-4">
-          Trouble signing in? Use the other Google sign-in
-        </button>
+      {GOOGLE_CLIENT_ID && status !== 'failed' ? (
+        <div className="relative min-h-[40px]">
+          <div ref={containerRef} className="flex justify-center" />
+          {status === 'loading' ? (
+            <div className="pointer-events-none absolute inset-0 animate-pulse rounded bg-zinc-100" aria-hidden="true" />
+          ) : null}
+        </div>
       ) : (
         <button type="button" onClick={signInWithRedirect} className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-50">
           Continue with Google
         </button>
       )}
 
-      {busy ? <p className="text-sm text-zinc-500">Signing in...</p> : null}
+      {status === 'ready' ? (
+        <button type="button" onClick={signInWithRedirect} className="mx-auto block text-xs text-zinc-400 transition hover:text-zinc-700 focus-visible:text-zinc-700 focus-visible:underline">
+          Trouble signing in?
+        </button>
+      ) : null}
+
+      {busy ? <p className="text-center text-sm text-zinc-500">Signing in...</p> : null}
       {error ? <p className="rounded-lg bg-red-50 border border-red-300 px-4 py-3 text-sm text-red-800">{error}</p> : null}
     </div>
   )
