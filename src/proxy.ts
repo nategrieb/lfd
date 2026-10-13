@@ -2,9 +2,15 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { authCookieOptions } from './lib/auth-cookie'
+import { cleanupLegacyAuthCookies } from './lib/legacy-cookie-cleanup'
 import { getSupabasePublishableOrAnonKey, getSupabaseUrl } from './lib/supabase-config'
 
 export default async function proxy(request: NextRequest) {
+  const cleaned = cleanupLegacyAuthCookies(request)
+  if (cleaned) {
+    return cleaned
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
