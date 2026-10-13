@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { authCookieOptions } from './lib/auth-cookie'
 import { getSupabasePublishableOrAnonKey, getSupabaseUrl } from './lib/supabase-config'
 
 export default async function proxy(request: NextRequest) {
@@ -11,6 +12,7 @@ export default async function proxy(request: NextRequest) {
     getSupabasePublishableOrAnonKey(),
     {
       db: { schema: 'lfd' },
+      cookieOptions: authCookieOptions,
       cookies: {
         getAll() {
           return request.cookies.getAll()

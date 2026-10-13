@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { authCookieOptions } from './auth-cookie'
 import { getSupabasePublishableOrAnonKey, getSupabaseUrl } from './supabase-config'
 
 export const createServerSupabase = async () => {
@@ -10,6 +11,7 @@ export const createServerSupabase = async () => {
     getSupabasePublishableOrAnonKey(),
     {
       db: { schema: 'lfd' },
+      cookieOptions: authCookieOptions,
       cookies: {
         getAll() {
           return cookieStore.getAll()
