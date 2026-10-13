@@ -31,7 +31,7 @@ export default async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
-  const isAuthPage = pathname.startsWith('/login')
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/auth/')
   const isOnboarding = pathname.startsWith('/onboarding')
   const isPublic = pathname.startsWith('/w/') || pathname.startsWith('/api/strava/')
 
