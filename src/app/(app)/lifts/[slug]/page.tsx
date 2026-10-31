@@ -13,6 +13,7 @@ type LiftSet = {
   reps: number
   rpe: number | null
   video_url: string | null
+  thumbnail_url: string | null
   workout_id: string
   workout: { id: string; name: string | null; created_at: string } | null
 }
@@ -46,7 +47,7 @@ export default async function LiftDetailPage({
     .eq('slug', slug)
     .maybeSingle()
 
-  const SET_COLUMNS = 'id, exercise_name, weight, reps, rpe, video_url, workout_id, workout:workouts(id, name, created_at)'
+  const SET_COLUMNS = 'id, exercise_name, weight, reps, rpe, video_url, thumbnail_url, workout_id, workout:workouts(id, name, created_at)'
   let title: string
   let rawSets: unknown[] | null
 
@@ -156,6 +157,7 @@ export default async function LiftDetailPage({
       .filter(set => set.video_url)
       .map(set => ({
         src: set.video_url!,
+        thumbnail: set.thumbnail_url,
         title: `${set.weight} lbs × ${set.reps}`,
         date: new Date(s.workoutDate).toLocaleDateString(undefined, {
           month: 'short',
