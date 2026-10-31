@@ -13,6 +13,7 @@ type LiftSet = {
   reps: number
   rpe: number | null
   video_url: string | null
+  thumbnail_url: string | null
   workout_id: string
   workout: { id: string; name: string | null; created_at: string } | null
 }
@@ -26,12 +27,17 @@ type Session = {
   bestE1RM: number | null
 }
 
+const SESSIONS_PER_PAGE = 20
+
 export default async function LiftDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ show?: string }>
 }) {
   const { slug } = await params
+  const { show } = await searchParams
   const supabase = await createServerSupabase()
   const {
     data: { user },
@@ -46,7 +52,7 @@ export default async function LiftDetailPage({
     .eq('slug', slug)
     .maybeSingle()
 
-  const SET_COLUMNS = 'id, exercise_name, weight, reps, rpe, video_url, workout_id, workout:workouts(id, name, created_at)'
+  const SET_COLUMNS = 'id, exercise_name, weight, reps, rpe, video_url, thumbnail_url, workout_id, workout:workouts(id, name, created_at)'
   let title: string
   let rawSets: unknown[] | null
 
@@ -127,6 +133,12 @@ export default async function LiftDetailPage({
     (a, b) => b.workoutDate.localeCompare(a.workoutDate),
   )
 
+  // Only render the most recent sessions; the chart and PR stats below still use all of them.
+  const requested = Number.parseInt(show ?? '', 10)
+  const visibleCount = Number.isFinite(requested) && requested > 0 ? requested : SESSIONS_PER_PAGE
+  const visibleSessions = sessions.slice(0, visibleCount)
+  const hiddenCount = sessions.length - visibleSessions.length
+
   // Chart data oldest → newest for the progress line
   const chartData: ChartPoint[] = [...sessionMap.values()]
     .sort((a, b) => a.workoutDate.localeCompare(b.workoutDate))
@@ -156,7 +168,10 @@ export default async function LiftDetailPage({
       .filter(set => set.video_url)
       .map(set => ({
         src: set.video_url!,
+        thumbnail: set.thumbnail_url,
         title: `${set.weight} lbs × ${set.reps}`,
+        weight: set.weight,
+        reps: set.reps,
         date: new Date(s.workoutDate).toLocaleDateString(undefined, {
           month: 'short',
           day: 'numeric',
@@ -255,7 +270,7 @@ export default async function LiftDetailPage({
         </h2>
 
         <div className="space-y-3">
-          {sessions.map(session => (
+          {visibleSessions.map(session => (
             <div
               key={session.workoutId}
               className="overflow-hidden rounded-xl border border-zinc-100 bg-white shadow-sm"
@@ -339,6 +354,16 @@ export default async function LiftDetailPage({
             </div>
           ))}
         </div>
+
+        {hiddenCount > 0 && (
+          <Link
+            href={`?show=${visibleCount + SESSIONS_PER_PAGE}`}
+            scroll={false}
+            className="mt-4 block rounded-xl border border-zinc-200 bg-white py-3 text-center text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-50"
+          >
+            Show {Math.min(SESSIONS_PER_PAGE, hiddenCount)} more · {hiddenCount} older session{hiddenCount !== 1 ? 's' : ''}
+          </Link>
+        )}
       </section>
     </div>
   )
