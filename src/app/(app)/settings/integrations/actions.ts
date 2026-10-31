@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import Papa from 'papaparse'
 import { createServerSupabase } from '@/lib/supabase-server'
+import { matchExerciseId } from '@/lib/exercise-catalogue'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -166,6 +167,9 @@ async function _importStrongCSV(formData: FormData): Promise<ImportResult> {
   let importedSets = 0
   let skippedWorkouts = 0
 
+  const { data: catalogueRows } = await supabase.from('exercises').select('id, name')
+  const catalogue = catalogueRows ?? []
+
   for (const [key, workoutRows] of workoutMap) {
     const [dateStr, workoutName] = key.split('|||')
 
@@ -210,6 +214,7 @@ async function _importStrongCSV(formData: FormData): Promise<ImportResult> {
           workout_id: workout.id,
           user_id: user.id,
           exercise_name: row['Exercise Name'].trim(),
+          exercise_id: matchExerciseId(catalogue, row['Exercise Name']),
           weight,
           reps,
           rpe: row.RPE !== '' && row.RPE != null ? Number(row.RPE) : null,

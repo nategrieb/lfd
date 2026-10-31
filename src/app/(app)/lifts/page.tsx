@@ -10,11 +10,19 @@ export default async function LiftsIndexPage() {
   } = await supabase.auth.getUser()
   if (!user?.id) redirect('/login')
 
-  // Fetch all sets with workout dates for grouping
-  const { data: rawSets } = await supabase
-    .from('sets')
-    .select('exercise_name, weight, reps, video_url, workout_id, workout:workouts(created_at)')
-    .eq('user_id', user.id)
+  // Fetch all sets with workout dates for grouping. PostgREST caps a response at 1000 rows,
+  // so page through until everything is loaded.
+  const rawSets: unknown[] = []
+  for (let from = 0; ; from += 1000) {
+    const { data } = await supabase
+      .from('sets')
+      .select('exercise_name, exercise_id, weight, reps, video_url, workout_id, workout:workouts(created_at), exercise:exercises(name, slug)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true })
+      .range(from, from + 999)
+    rawSets.push(...(data ?? []))
+    if (!data || data.length < 1000) break
+  }
 
   type ExerciseSummary = {
     canonical: string
@@ -28,14 +36,16 @@ export default async function LiftsIndexPage() {
 
   const exerciseMap = new Map<string, ExerciseSummary>()
 
-  for (const raw of (rawSets ?? []) as any[]) {
-    const canonical = canonicalName(raw.exercise_name ?? '')
+  for (const raw of rawSets as any[]) {
+    // Linked sets group under their catalogue exercise; unlinked ones keep the name-based grouping.
+    const canonical: string = raw.exercise?.name ?? canonicalName(raw.exercise_name ?? '')
     if (!canonical) continue
+    const key = raw.exercise_id ?? canonical
 
-    if (!exerciseMap.has(canonical)) {
-      exerciseMap.set(canonical, {
+    if (!exerciseMap.has(key)) {
+      exerciseMap.set(key, {
         canonical,
-        slug: nameToSlug(raw.exercise_name ?? ''),
+        slug: raw.exercise?.slug ?? nameToSlug(raw.exercise_name ?? ''),
         sessionIds: new Set(),
         lastDate: '',
         bestWeight: 0,
@@ -44,7 +54,7 @@ export default async function LiftsIndexPage() {
       })
     }
 
-    const entry = exerciseMap.get(canonical)!
+    const entry = exerciseMap.get(key)!
     const workoutDate = raw.workout?.created_at ?? ''
 
     if (raw.workout_id) entry.sessionIds.add(raw.workout_id)
@@ -95,7 +105,7 @@ export default async function LiftsIndexPage() {
               : ''
 
             return (
-              <li key={canonical}>
+              <li key={slug}>
                 <Link
                   href={`/lifts/${slug}`}
                   className="flex items-center gap-3 rounded-xl border border-zinc-100 bg-white shadow-sm px-4 py-3.5 transition hover:bg-zinc-50"

@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createServerSupabase } from '@/lib/supabase-server'
+import { resolveLegacyName } from '@/lib/legacy-exercise-map'
 import { canonicalName } from '@/lib/lifts'
 
 export async function startWorkout() {
@@ -117,12 +118,22 @@ export async function addSet(formData: FormData) {
 
   const nextOrder = (lastSet?.sort_order ?? 0) + 1
 
+  // Link to the exercise catalogue when the name matches (directly, or via the older-name map);
+  // free-text names stay unlinked.
+  const catalogueName = resolveLegacyName(exerciseName) ?? exerciseName
+  const { data: catalogueRow } = await supabase
+    .from('exercises')
+    .select('id')
+    .ilike('name', catalogueName.trim().replace(/[%_\\]/g, '\\$&'))
+    .maybeSingle()
+
   const { data, error } = await supabase
     .from('sets')
     .insert({
       workout_id: workoutId,
       user_id: userId,
       exercise_name: exerciseName,
+      exercise_id: catalogueRow?.id ?? null,
       weight,
       reps,
       rpe,
