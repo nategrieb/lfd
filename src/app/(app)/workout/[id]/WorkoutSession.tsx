@@ -1,5 +1,7 @@
 'use client'
 
+import ExerciseSearchInput from '@/components/ExerciseSearchInput'
+import { QUICK_PICKS, plainSlug } from '@/lib/exercise-catalogue'
 import { useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -8,7 +10,6 @@ import AddSetForm from './AddSetForm'
 import VideoUpload from './VideoUpload'
 import FinishWorkoutSheet from './FinishWorkoutSheet'
 import { createClient } from '@/lib/supabase'
-import { nameToSlug } from '@/lib/lifts'
 import { formatTempo, formatRest } from '@/lib/programs'
 import { isCardioSet, formatCardioDistance, formatCardioDuration } from '@/lib/feed'
 import RestTimer from './RestTimer'
@@ -658,7 +659,7 @@ export default function WorkoutSession({
               <div className="flex items-center justify-between">
                 <div>
                   <Link
-                    href={`/lifts/${nameToSlug(exerciseName)}`}
+                    href={`/lifts/${plainSlug(exerciseName)}`}
                     className="text-sm font-semibold text-zinc-900 hover:text-green-700 transition-colors"
                     onClick={e => e.stopPropagation()}
                   >
@@ -699,6 +700,7 @@ export default function WorkoutSession({
 
                         <input
                           type="number"
+                          inputMode="decimal"
                           step="0.5"
                           value={setDrafts[set.id]?.weight ?? String(set.weight)}
                           onChange={(event) =>
@@ -711,6 +713,7 @@ export default function WorkoutSession({
                         />
                         <input
                           type="number"
+                          inputMode="numeric"
                           min="1"
                           value={setDrafts[set.id]?.reps ?? String(set.reps)}
                           onChange={(event) =>
@@ -723,6 +726,7 @@ export default function WorkoutSession({
                         />
                         <input
                           type="number"
+                          inputMode="decimal"
                           step="0.5"
                           min="1"
                           max="10"
@@ -803,6 +807,7 @@ export default function WorkoutSession({
                             <span className="text-xs font-semibold text-green-700">{setNum}</span>
                             <input
                               type="number"
+                              inputMode="decimal"
                               step="0.5"
                               placeholder="lbs"
                               value={draft.weight}
@@ -816,6 +821,7 @@ export default function WorkoutSession({
                             />
                             <input
                               type="number"
+                              inputMode="numeric"
                               min="1"
                               placeholder="reps"
                               value={draft.reps}
@@ -829,6 +835,7 @@ export default function WorkoutSession({
                             />
                             <input
                               type="number"
+                              inputMode="decimal"
                               step="0.5"
                               min="1"
                               max="10"
@@ -907,11 +914,11 @@ export default function WorkoutSession({
           )}
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Add Exercise</p>
           <div className="mt-2 flex items-center gap-2">
-            <input
+            <ExerciseSearchInput
               value={newExerciseName}
-              onChange={(event) => setNewExerciseName(event.target.value)}
-              placeholder="Example: Incline Bench"
-              className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-green-700"
+              onChange={setNewExerciseName}
+              onPick={(exercise) => setNewExerciseName(exercise.name)}
+              placeholder="Search exercises, e.g. Incline Bench"
             />
             <button
               type="button"
@@ -923,14 +930,14 @@ export default function WorkoutSession({
             </button>
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
-            {['Squat', 'Bench', 'Deadlift'].map((preset) => (
+            {QUICK_PICKS.map((pick) => (
               <button
-                key={preset}
+                key={pick.label}
                 type="button"
-                onClick={() => setNewExerciseName(preset)}
+                onClick={() => setNewExerciseName(pick.name)}
                 className="rounded-full border border-zinc-200 px-3 py-1 text-xs text-zinc-600 hover:bg-zinc-50"
               >
-                {preset}
+                {pick.label}
               </button>
             ))}
           </div>

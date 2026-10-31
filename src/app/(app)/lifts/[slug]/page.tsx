@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { canonicalName, slugToCanonical, epley1RM } from '@/lib/lifts'
+import { exerciseImageUrl, plainSlug } from '@/lib/exercise-catalogue'
 import LiftChart, { type ChartPoint } from './LiftChart'
 import LiftVideoSection, { type VideoClip } from './LiftVideoSection'
 
@@ -37,29 +38,64 @@ export default async function LiftDetailPage({
   } = await supabase.auth.getUser()
   if (!user?.id) redirect('/login')
 
-  // Step 1: Discover all exercise name variants the user has logged
-  const { data: nameRows } = await supabase
-    .from('sets')
-    .select('exercise_name')
-    .eq('user_id', user.id)
+  // Catalogue exercise (e.g. /lifts/barbell-bench-press-medium-grip): history is every set linked to it,
+  // however it was originally named. Otherwise fall back to name-based grouping for unlinked exercises.
+  const { data: catalogueExercise } = await supabase
+    .from('exercises')
+    .select('id, name, equipment, primary_muscles, secondary_muscles, images')
+    .eq('slug', slug)
+    .maybeSingle()
 
-  const allNames = [...new Set((nameRows ?? []).map((r: any) => r.exercise_name as string))]
-  const targetCanonical = slugToCanonical(slug)
+  const SET_COLUMNS = 'id, exercise_name, weight, reps, rpe, video_url, workout_id, workout:workouts(id, name, created_at)'
+  let title: string
+  let rawSets: unknown[] | null
 
-  // Step 2: Filter to names that normalise to the same canonical
-  const matchingNames = allNames.filter(n => canonicalName(n) === targetCanonical)
-  if (matchingNames.length === 0) redirect('/lifts')
+  if (catalogueExercise) {
+    title = catalogueExercise.name
+    const { data } = await supabase
+      .from('sets')
+      .select(SET_COLUMNS)
+      .eq('user_id', user.id)
+      .eq('exercise_id', catalogueExercise.id)
+      .order('created_at', { ascending: true })
+    rawSets = data
+  } else {
+    // Step 1: Discover all exercise name variants the user has logged
+    const { data: nameRows } = await supabase
+      .from('sets')
+      .select('exercise_name')
+      .eq('user_id', user.id)
 
-  // Step 3: Fetch all sets for this exercise (all variants) with workout info
-  const { data: rawSets } = await supabase
-    .from('sets')
-    .select('id, exercise_name, weight, reps, rpe, video_url, workout_id, workout:workouts(id, name, created_at)')
-    .eq('user_id', user.id)
-    .in('exercise_name', matchingNames)
-    .order('created_at', { ascending: true })
+    const allNames = [...new Set((nameRows ?? []).map((r: any) => r.exercise_name as string))]
+    title = slugToCanonical(slug)
+
+    // Step 2: Filter to names that normalise to the same canonical (or whose own slug is this one)
+    const matchingNames = allNames.filter(n => canonicalName(n) === title || plainSlug(n) === slug)
+    if (matchingNames.length === 0) redirect('/lifts')
+
+    // If those sets were linked to a catalogue exercise, show that page instead.
+    const { data: linked } = await supabase
+      .from('sets')
+      .select('exercise:exercises(slug)')
+      .eq('user_id', user.id)
+      .in('exercise_name', matchingNames)
+      .not('exercise_id', 'is', null)
+      .limit(1)
+    const linkedSlug = (linked?.[0] as { exercise: { slug: string } | null } | undefined)?.exercise?.slug
+    if (linkedSlug && linkedSlug !== slug) redirect(`/lifts/${linkedSlug}`)
+
+    // Step 3: Fetch all sets for this exercise (all variants) with workout info
+    const { data } = await supabase
+      .from('sets')
+      .select(SET_COLUMNS)
+      .eq('user_id', user.id)
+      .in('exercise_name', matchingNames)
+      .order('created_at', { ascending: true })
+    rawSets = data
+  }
 
   const sets = (rawSets ?? []) as unknown as LiftSet[]
-  if (sets.length === 0) redirect('/lifts')
+  if (sets.length === 0 && !catalogueExercise) redirect('/lifts')
 
   // Group by workout session
   const sessionMap = new Map<string, Session>()
@@ -142,13 +178,28 @@ export default async function LiftDetailPage({
             <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
           </svg>
         </Link>
+        {catalogueExercise && exerciseImageUrl(catalogueExercise.images) && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={exerciseImageUrl(catalogueExercise.images)!} alt="" className="h-14 w-14 shrink-0 rounded-xl bg-zinc-100 object-cover" />
+        )}
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">{targetCanonical}</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight">{title}</h1>
           <p className="mt-0.5 text-sm text-zinc-400">
             {sessions.length} session{sessions.length !== 1 ? 's' : ''}
           </p>
+          {catalogueExercise && (
+            <p className="mt-0.5 text-xs capitalize text-zinc-400">
+              {[catalogueExercise.primary_muscles?.join(', '), catalogueExercise.equipment].filter(Boolean).join(' · ')}
+            </p>
+          )}
         </div>
       </header>
+
+      {sets.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-zinc-200 px-6 py-12 text-center">
+          <p className="text-sm font-medium text-zinc-400">No sets logged for this exercise yet.</p>
+        </div>
+      )}
 
       {/* PR stats */}
       <section className="mb-6 grid grid-cols-2 gap-3">

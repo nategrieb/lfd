@@ -105,6 +105,7 @@ export default function AddSetForm({
             ref={weightRef}
             name="weight"
             type="number"
+            inputMode="decimal"
             step="0.5"
             placeholder="lbs"
             value={formState.weight}
@@ -114,6 +115,7 @@ export default function AddSetForm({
           <input
             name="reps"
             type="number"
+            inputMode="numeric"
             min="1"
             placeholder="reps"
             value={formState.reps}
@@ -123,6 +125,7 @@ export default function AddSetForm({
           <input
             name="rpe"
             type="number"
+            inputMode="decimal"
             step="0.5"
             min="1"
             max="10"
