@@ -170,6 +170,8 @@ export default async function LiftDetailPage({
         src: set.video_url!,
         thumbnail: set.thumbnail_url,
         title: `${set.weight} lbs × ${set.reps}`,
+        weight: set.weight,
+        reps: set.reps,
         date: new Date(s.workoutDate).toLocaleDateString(undefined, {
           month: 'short',
           day: 'numeric',
