@@ -159,7 +159,7 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
         )
       })()}
 
-      <SummarySetsSection grouped={grouped} prBadges={prBadges} />
+      <SummarySetsSection grouped={grouped} prBadges={prBadges} ownerId={isOwner ? null : workout.user_id} />
       <div className="mt-8 flex flex-col gap-3">
         <ShareButton workoutId={workout.id} />
         {isOwner && isStravaConnected && (
