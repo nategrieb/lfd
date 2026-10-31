@@ -26,12 +26,17 @@ type Session = {
   bestE1RM: number | null
 }
 
+const SESSIONS_PER_PAGE = 20
+
 export default async function LiftDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ show?: string }>
 }) {
   const { slug } = await params
+  const { show } = await searchParams
   const supabase = await createServerSupabase()
   const {
     data: { user },
@@ -126,6 +131,12 @@ export default async function LiftDetailPage({
   const sessions = [...sessionMap.values()].sort(
     (a, b) => b.workoutDate.localeCompare(a.workoutDate),
   )
+
+  // Only render the most recent sessions; the chart and PR stats below still use all of them.
+  const requested = Number.parseInt(show ?? '', 10)
+  const visibleCount = Number.isFinite(requested) && requested > 0 ? requested : SESSIONS_PER_PAGE
+  const visibleSessions = sessions.slice(0, visibleCount)
+  const hiddenCount = sessions.length - visibleSessions.length
 
   // Chart data oldest → newest for the progress line
   const chartData: ChartPoint[] = [...sessionMap.values()]
@@ -255,7 +266,7 @@ export default async function LiftDetailPage({
         </h2>
 
         <div className="space-y-3">
-          {sessions.map(session => (
+          {visibleSessions.map(session => (
             <div
               key={session.workoutId}
               className="overflow-hidden rounded-xl border border-zinc-100 bg-white shadow-sm"
@@ -339,6 +350,16 @@ export default async function LiftDetailPage({
             </div>
           ))}
         </div>
+
+        {hiddenCount > 0 && (
+          <Link
+            href={`?show=${visibleCount + SESSIONS_PER_PAGE}`}
+            scroll={false}
+            className="mt-4 block rounded-xl border border-zinc-200 bg-white py-3 text-center text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-50"
+          >
+            Show {Math.min(SESSIONS_PER_PAGE, hiddenCount)} more · {hiddenCount} older session{hiddenCount !== 1 ? 's' : ''}
+          </Link>
+        )}
       </section>
     </div>
   )
