@@ -31,6 +31,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(getCanonicalBaseUrl()),
   title: "Lift For Dan",
   description: "Track your powerlifting workouts, PRs, and progress.",
+  // Home-screen install on iPhone: opens full-screen with this name and icon.
+  appleWebApp: { capable: true, title: "LFD", statusBarStyle: "default" },
+  icons: { apple: "/apple-touch-icon.png" },
+  // Next only emits the unprefixed tag; older iOS versions still look for the Apple one.
+  other: { "apple-mobile-web-app-capable": "yes" },
 };
 
 export const viewport: Viewport = {

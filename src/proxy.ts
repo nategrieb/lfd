@@ -74,5 +74,6 @@ export default async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api).*)'],
+  // The manifest and icons must load while signed out too: iOS and Android fetch them when installing.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|api|.*\\.(?:svg|png|jpg|jpeg|webp|ico)$).*)'],
 }
