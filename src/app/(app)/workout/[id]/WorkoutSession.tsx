@@ -897,7 +897,7 @@ export default function WorkoutSession({
           <p className="text-sm text-zinc-400">No exercises yet. Add your first exercise below.</p>
         )}
 
-        <div className="sticky bottom-24 z-20 rounded-xl border border-zinc-100 bg-white/95 p-3 shadow-sm backdrop-blur">
+        <div className="sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] z-20 rounded-xl border border-zinc-100 bg-white/95 p-3 shadow-sm backdrop-blur">
           {workoutStatus === 'completed' && (
             <>
               <button

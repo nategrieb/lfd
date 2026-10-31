@@ -22,7 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen flex-col bg-zinc-50 text-zinc-900">
-      <div className="flex-1 pb-20">{children}</div>
+      <div className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))]">{children}</div>
       <BottomNav activeWorkoutId={activeWorkoutId} />
     </div>
   )
