@@ -260,7 +260,7 @@ export default function FeedCard({ item, displayName, userInitial, username, ava
           <div className="mb-2 flex items-start justify-between gap-3">
             <div className="min-w-0">
               <Link
-                href={`/lifts/${nameToSlug(primaryLift.set.exercise_name)}`}
+                href={`/lifts/${nameToSlug(primaryLift.set.exercise_name)}${workout.user_id !== currentUserId ? `?user=${workout.user_id}` : ''}`}
                 onClick={e => e.stopPropagation()}
                 className="block truncate text-sm font-bold uppercase tracking-wide text-zinc-900 hover:text-green-700 transition-colors"
               >

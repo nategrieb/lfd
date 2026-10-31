@@ -34,15 +34,31 @@ export default async function LiftDetailPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ show?: string }>
+  searchParams: Promise<{ show?: string; user?: string }>
 }) {
   const { slug } = await params
-  const { show } = await searchParams
+  const { show, user: userParam } = await searchParams
   const supabase = await createServerSupabase()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user?.id) redirect('/login')
+
+  // ?user=<id> shows someone else's history for this lift (visible only if RLS lets us read their sets).
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const viewingOther = !!userParam && UUID.test(userParam) && userParam !== user.id
+  const targetUserId = viewingOther ? userParam! : user.id
+  const userQuery = viewingOther ? `user=${targetUserId}` : ''
+  const owner = viewingOther
+    ? (
+        await supabase
+          .from('profiles')
+          .select('username, display_name')
+          .eq('id', targetUserId)
+          .maybeSingle()
+      ).data
+    : null
+  const ownerName = owner?.display_name || owner?.username || 'Their'
 
   // Catalogue exercise (e.g. /lifts/barbell-bench-press-medium-grip): history is every set linked to it,
   // however it was originally named. Otherwise fall back to name-based grouping for unlinked exercises.
@@ -61,7 +77,7 @@ export default async function LiftDetailPage({
     const { data } = await supabase
       .from('sets')
       .select(SET_COLUMNS)
-      .eq('user_id', user.id)
+      .eq('user_id', targetUserId)
       .eq('exercise_id', catalogueExercise.id)
       .order('created_at', { ascending: true })
     rawSets = data
@@ -70,38 +86,38 @@ export default async function LiftDetailPage({
     const { data: nameRows } = await supabase
       .from('sets')
       .select('exercise_name')
-      .eq('user_id', user.id)
+      .eq('user_id', targetUserId)
 
     const allNames = [...new Set((nameRows ?? []).map((r: any) => r.exercise_name as string))]
     title = slugToCanonical(slug)
 
     // Step 2: Filter to names that normalise to the same canonical (or whose own slug is this one)
     const matchingNames = allNames.filter(n => canonicalName(n) === title || plainSlug(n) === slug)
-    if (matchingNames.length === 0) redirect('/lifts')
+    if (matchingNames.length === 0 && !viewingOther) redirect('/lifts')
 
     // If those sets were linked to a catalogue exercise, show that page instead.
     const { data: linked } = await supabase
       .from('sets')
       .select('exercise:exercises(slug)')
-      .eq('user_id', user.id)
+      .eq('user_id', targetUserId)
       .in('exercise_name', matchingNames)
       .not('exercise_id', 'is', null)
       .limit(1)
     const linkedSlug = (linked?.[0] as { exercise: { slug: string } | null } | undefined)?.exercise?.slug
-    if (linkedSlug && linkedSlug !== slug) redirect(`/lifts/${linkedSlug}`)
+    if (linkedSlug && linkedSlug !== slug) redirect(`/lifts/${linkedSlug}${userQuery ? `?${userQuery}` : ''}`)
 
     // Step 3: Fetch all sets for this exercise (all variants) with workout info
     const { data } = await supabase
       .from('sets')
       .select(SET_COLUMNS)
-      .eq('user_id', user.id)
+      .eq('user_id', targetUserId)
       .in('exercise_name', matchingNames)
       .order('created_at', { ascending: true })
     rawSets = data
   }
 
   const sets = (rawSets ?? []) as unknown as LiftSet[]
-  if (sets.length === 0 && !catalogueExercise) redirect('/lifts')
+  if (sets.length === 0 && !catalogueExercise && !viewingOther) redirect('/lifts')
 
   // Group by workout session
   const sessionMap = new Map<string, Session>()
@@ -185,8 +201,8 @@ export default async function LiftDetailPage({
       {/* Header */}
       <header className="mb-6 flex items-start gap-4">
         <Link
-          href="/lifts"
-          aria-label="Back to all lifts"
+          href={viewingOther && owner?.username ? `/people/${owner.username}` : '/lifts'}
+          aria-label={viewingOther ? 'Back to profile' : 'Back to all lifts'}
           className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-400 transition-colors hover:border-zinc-300 hover:text-zinc-700"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
@@ -198,6 +214,11 @@ export default async function LiftDetailPage({
           <img src={exerciseImageUrl(catalogueExercise.images)!} alt="" className="h-14 w-14 shrink-0 rounded-xl bg-zinc-100 object-cover" />
         )}
         <div>
+          {viewingOther && (
+            <p className="text-xs font-semibold uppercase tracking-wider text-green-700">
+              {owner?.display_name || owner?.username ? `${ownerName}’s lift` : 'Their lift'}
+            </p>
+          )}
           <h1 className="text-2xl font-extrabold tracking-tight">{title}</h1>
           <p className="mt-0.5 text-sm text-zinc-400">
             {sessions.length} session{sessions.length !== 1 ? 's' : ''}
@@ -357,7 +378,7 @@ export default async function LiftDetailPage({
 
         {hiddenCount > 0 && (
           <Link
-            href={`?show=${visibleCount + SESSIONS_PER_PAGE}`}
+            href={`?show=${visibleCount + SESSIONS_PER_PAGE}${userQuery ? `&${userQuery}` : ''}`}
             scroll={false}
             className="mt-4 block rounded-xl border border-zinc-200 bg-white py-3 text-center text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-50"
           >

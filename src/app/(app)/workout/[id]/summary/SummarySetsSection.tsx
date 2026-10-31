@@ -21,9 +21,11 @@ export type SummarySet = {
 type Props = {
   grouped: Record<string, SummarySet[]>
   prBadges: Record<string, boolean>
+  /** Owner of the workout when it isn't the viewer's own, so lift links open their history. */
+  ownerId?: string | null
 }
 
-export default function SummarySetsSection({ grouped, prBadges }: Props) {
+export default function SummarySetsSection({ grouped, prBadges, ownerId }: Props) {
   const [reelStartIndex, setReelStartIndex] = useState<number | null>(null)
 
   const clips = useMemo(() => {
@@ -58,7 +60,7 @@ export default function SummarySetsSection({ grouped, prBadges }: Props) {
         <div key={exercise} className="mb-6 rounded-xl border border-zinc-100 bg-white p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-3">
             <Link
-              href={`/lifts/${nameToSlug(exercise)}`}
+              href={`/lifts/${nameToSlug(exercise)}${ownerId ? `?user=${ownerId}` : ''}`}
               className="text-base font-bold text-zinc-900 hover:text-green-700 transition-colors"
             >
               {exercise}
