@@ -139,7 +139,7 @@ export async function enrollInProgram(formData: FormData) {
     }
   }
 
-  revalidatePath('/history')
+  revalidatePath('/profile')
   revalidatePath('/programs')
   redirect(`/programs/${templateId}?enrolled=1`)
 }
@@ -170,7 +170,7 @@ export async function unenrollFromProgram(enrollmentId: string, templateId: stri
 
   if (error) return { success: false, message: error.message }
 
-  revalidatePath('/history')
+  revalidatePath('/profile')
   revalidatePath(`/programs/${templateId}`)
   redirect(`/programs/${templateId}`)
 }

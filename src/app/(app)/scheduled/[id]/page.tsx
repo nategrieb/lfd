@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import BackButton from '@/components/BackButton'
+import { getAuthUser } from '@/lib/auth-user'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { formatTempo, formatRest } from '@/lib/programs'
@@ -28,9 +30,7 @@ export default async function ScheduledWorkoutPage({
   const { id: scheduledId } = await params
 
   const supabase = await createServerSupabase()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthUser()
   if (!user?.id) redirect('/login')
 
   const { data: sw } = await supabase
@@ -40,7 +40,7 @@ export default async function ScheduledWorkoutPage({
     .eq('user_id', user.id)
     .maybeSingle()
 
-  if (!sw) redirect('/history')
+  if (!sw) redirect('/profile')
 
   // If already in progress or completed, redirect to the actual workout
   if (sw.status === 'started' && sw.workout_id) redirect(`/workout/${sw.workout_id}`)
@@ -72,15 +72,7 @@ export default async function ScheduledWorkoutPage({
     <div className="mx-auto max-w-lg px-5 py-8">
       {/* Header */}
       <header className="mb-6 flex items-start gap-4">
-        <Link
-          href="/history"
-          aria-label="Back"
-          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-700 text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-            <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-          </svg>
-        </Link>
+        <BackButton fallback="/profile" className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-700 text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl font-extrabold tracking-tight">

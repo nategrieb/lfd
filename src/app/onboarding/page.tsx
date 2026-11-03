@@ -1,12 +1,11 @@
 import OnboardingForm from './OnboardingForm'
+import { getAuthUser } from '@/lib/auth-user'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 
 export default async function OnboardingPage() {
   const supabase = await createServerSupabase()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthUser()
 
   if (!user?.id) redirect('/login')
 

@@ -188,6 +188,49 @@ export async function deleteSet({ setId, workoutId }: { setId: string; workoutId
   return { success: true }
 }
 
+/** Remove an exercise from a workout: deletes every set logged for it (and their video clips). */
+export async function deleteExercise({ workoutId, exerciseName }: { workoutId: string; exerciseName: string }) {
+  if (!workoutId || !exerciseName) {
+    return { success: false, message: 'Missing workout or exercise.' }
+  }
+
+  const supabase = await createServerSupabase()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user?.id) {
+    return { success: false, message: 'Not authenticated.' }
+  }
+
+  const { data: rows, error: findError } = await supabase
+    .from('sets')
+    .select('id')
+    .eq('workout_id', workoutId)
+    .eq('user_id', user.id)
+    .eq('exercise_name', exerciseName)
+
+  if (findError) {
+    return { success: false, message: findError.message }
+  }
+
+  const ids = (rows ?? []).map((row) => row.id as string)
+  if (ids.length > 0) {
+    const { error } = await supabase.from('sets').delete().in('id', ids).eq('user_id', user.id).eq('workout_id', workoutId)
+    if (error) {
+      return { success: false, message: error.message }
+    }
+    // Best-effort: remove the video clips too.
+    await supabase.storage
+      .from('workout-videos')
+      .remove(ids.map((id) => `${user.id}/${workoutId}/${id}.mp4`))
+      .catch(() => {})
+  }
+
+  revalidatePath(`/workout/${workoutId}`)
+  return { success: true }
+}
+
 export async function updateWorkoutName({
   workoutId,
   name,
@@ -222,7 +265,7 @@ export async function updateWorkoutName({
 
   revalidatePath(`/workout/${workoutId}`)
   revalidatePath(`/workout/${workoutId}/summary`)
-  revalidatePath('/history')
+  revalidatePath('/profile')
   revalidatePath('/')
 
   return { success: true, name: trimmedName }
@@ -323,7 +366,7 @@ export async function cancelWorkoutDraft({ workoutId }: { workoutId: string }) {
 
   revalidatePath('/workout')
   revalidatePath('/')
-  revalidatePath('/history')
+  revalidatePath('/profile')
 
   return { success: true }
 }
@@ -648,7 +691,7 @@ export async function deleteWorkout({ workoutId }: { workoutId: string }) {
     await supabase.storage.from('workout-videos').remove(paths)
   }
 
-  revalidatePath('/history')
+  revalidatePath('/profile')
   revalidatePath('/')
 
   return { success: true }

@@ -1,4 +1,5 @@
 import { createServerSupabase } from '@/lib/supabase-server'
+import { getAuthUser } from '@/lib/auth-user'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import FollowButton from './FollowButton'
@@ -7,9 +8,7 @@ type SearchParams = Promise<{ q?: string }>
 
 export default async function PeoplePage({ searchParams }: { searchParams: SearchParams }) {
   const supabase = await createServerSupabase()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthUser()
   if (!user?.id) redirect('/login')
 
   const { q: rawQ } = await searchParams

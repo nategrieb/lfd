@@ -22,3 +22,43 @@ body {
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* Touch feedback: every tappable thing visibly responds the instant it is pressed. */
+@media (hover: none) and (pointer: coarse) {
+  a,
+  button,
+  [role="button"],
+  summary {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition:
+      transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      filter 120ms ease,
+      background-color 120ms ease;
+  }
+
+  a:active,
+  button:not(:disabled):active,
+  [role="button"]:active,
+  summary:active {
+    transform: scale(0.96);
+    filter: brightness(0.9);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  a,
+  button,
+  [role="button"] {
+    transition: none !important;
+  }
+}
+
+/* Top progress bar while moving between screens */
+@keyframes nav-progress {
+  0% { width: 0; }
+  30% { width: 55%; }
+  70% { width: 80%; }
+  100% { width: 92%; }
+}
+.nav-progress { animation: nav-progress 4s cubic-bezier(0.1, 0.6, 0.2, 1) forwards; }

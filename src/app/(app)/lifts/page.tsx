@@ -1,13 +1,13 @@
 import Link from 'next/link'
+import BackButton from '@/components/BackButton'
+import { getAuthUser } from '@/lib/auth-user'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { canonicalName, nameToSlug, epley1RM } from '@/lib/lifts'
 
 export default async function LiftsIndexPage() {
   const supabase = await createServerSupabase()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthUser()
   if (!user?.id) redirect('/login')
 
   // Fetch all sets with workout dates for grouping. PostgREST caps a response at 1000 rows,
@@ -72,15 +72,7 @@ export default async function LiftsIndexPage() {
   return (
     <div className="mx-auto max-w-lg px-5 py-8">
       <header className="mb-6 flex items-center gap-4">
-        <Link
-          href="/history"
-          aria-label="Back"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-400 transition-colors hover:border-zinc-300 hover:text-zinc-700"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
-            <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-          </svg>
-        </Link>
+        <BackButton fallback="/profile" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-400 transition-colors hover:border-zinc-300 hover:text-zinc-700" />
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight">Lifts</h1>
           <p className="mt-0.5 text-sm text-zinc-400">

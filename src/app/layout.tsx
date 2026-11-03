@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import TouchFeedback from "@/components/TouchFeedback";
 
 function getCanonicalBaseUrl(): string {
   const raw =
@@ -56,6 +57,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <TouchFeedback />
         {children}
       </body>
     </html>

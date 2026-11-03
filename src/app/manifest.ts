@@ -20,7 +20,7 @@ export default function manifest(): MetadataRoute.Manifest {
     shortcuts: [
       { name: 'Start workout', url: '/start' },
       { name: 'Lifts', url: '/lifts' },
-      { name: 'History', url: '/history' },
+      { name: 'Profile', url: '/profile' },
     ],
   }
 }

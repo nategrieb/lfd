@@ -1,11 +1,10 @@
 import { redirect } from 'next/navigation'
+import { getAuthUser } from '@/lib/auth-user'
 import { createServerSupabase } from '@/lib/supabase-server'
 
 export default async function WorkoutIndexPage() {
   const supabase = await createServerSupabase()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthUser()
 
   if (!user?.id) {
     redirect('/login')

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { getAuthUser } from '@/lib/auth-user'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase-server'
 import StartFreeWorkoutButton from './StartFreeWorkoutButton'
@@ -7,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function StartPage() {
   const supabase = await createServerSupabase()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser()
   if (!user?.id) redirect('/login')
 
   // If there's already an in-progress workout, go straight there
