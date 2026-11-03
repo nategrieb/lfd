@@ -35,7 +35,7 @@ export default function DeleteWorkoutButton({ workoutId }: { workoutId: string }
               startTransition(async () => {
                 const result = await deleteWorkout({ workoutId })
                 if (result.success) {
-                  router.push('/history')
+                  router.push('/profile')
                 } else {
                   setError(result.message ?? 'Failed to delete workout.')
                 }

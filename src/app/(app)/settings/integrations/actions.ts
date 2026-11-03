@@ -241,7 +241,7 @@ async function _importStrongCSV(formData: FormData): Promise<ImportResult> {
     }
   }
 
-  revalidatePath('/history')
+  revalidatePath('/profile')
 
   const skippedNote =
     skippedWorkouts > 0

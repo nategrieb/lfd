@@ -1,11 +1,11 @@
 import { createServerSupabase } from '@/lib/supabase-server'
 import BottomNav from '@/components/BottomNav'
+import NavHistory from '@/components/NavHistory'
+import { getAuthUser } from '@/lib/auth-user'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerSupabase()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthUser()
 
   let activeWorkoutId: string | null = null
   if (user?.id) {
@@ -23,6 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen flex-col bg-zinc-50 text-zinc-900">
       <div className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))]">{children}</div>
+      <NavHistory />
       <BottomNav activeWorkoutId={activeWorkoutId} />
     </div>
   )

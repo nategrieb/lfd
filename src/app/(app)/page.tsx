@@ -1,4 +1,5 @@
 import { createServerSupabase } from '@/lib/supabase-server'
+import { getAuthUser } from '@/lib/auth-user'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import StartWorkoutButton from './workout/StartWorkoutButton'
@@ -8,9 +9,7 @@ import { buildFeed, type FeedWorkout } from '@/lib/feed'
 
 export default async function DashboardPage() {
   const supabase = await createServerSupabase()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthUser()
 
   if (!user?.id) redirect('/login')
 
@@ -199,7 +198,7 @@ export default async function DashboardPage() {
           <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
             Highlights
           </h2>
-          <Link href="/history" className="text-xs font-medium text-zinc-400 hover:text-green-700 transition-colors">
+          <Link href="/profile" className="text-xs font-medium text-zinc-400 hover:text-green-700 transition-colors">
             All workouts →
           </Link>
         </div>

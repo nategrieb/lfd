@@ -5,7 +5,7 @@ import { QUICK_PICKS, plainSlug } from '@/lib/exercise-catalogue'
 import { useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { addSet, cancelWorkoutDraft, deleteSet, finishWorkout, updateSet, updateWorkoutDetails, updateWorkoutName } from '../actions'
+import { addSet, cancelWorkoutDraft, deleteExercise, deleteSet, finishWorkout, updateSet, updateWorkoutDetails, updateWorkoutName } from '../actions'
 import AddSetForm from './AddSetForm'
 import VideoUpload from './VideoUpload'
 import FinishWorkoutSheet from './FinishWorkoutSheet'
@@ -185,6 +185,7 @@ export default function WorkoutSession({
   const [newExerciseName, setNewExerciseName] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  const [removingExercise, setRemovingExercise] = useState<string | null>(null)
   const [showFinishSheet, setShowFinishSheet] = useState(false)
   const [lastAddedExercise, setLastAddedExercise] = useState<string | null>(null)
   const [draftLocation, setDraftLocation] = useState(initialLocation ?? '')
@@ -283,6 +284,30 @@ export default function WorkoutSession({
       delete next[setId]
       return next
     })
+  }
+
+  const handleRemoveExercise = async (exerciseName: string) => {
+    const logged = sets.filter((set) => set.exercise_name === exerciseName)
+    if (logged.length > 0 && !window.confirm(`Remove ${exerciseName} and its ${logged.length} logged set${logged.length === 1 ? '' : 's'}?`)) {
+      return
+    }
+
+    setRemovingExercise(exerciseName)
+    if (logged.length > 0) {
+      const result = await deleteExercise({ workoutId, exerciseName })
+      if (!result.success) {
+        setRemovingExercise(null)
+        setMessage(result.message ?? 'Could not remove that exercise.')
+        setTimeout(() => setMessage(null), 2500)
+        return
+      }
+    }
+    setRemovingExercise(null)
+
+    const loggedIds = new Set(logged.map((set) => set.id))
+    setSets((prev) => prev.filter((set) => !loggedIds.has(set.id)))
+    setPendingSets((prev) => prev.filter((p) => p.exerciseName.toLowerCase() !== exerciseName.toLowerCase()))
+    setExerciseOrder((prev) => prev.filter((name) => name !== exerciseName))
   }
 
   const handleAddExercise = () => {
@@ -669,11 +694,29 @@ export default function WorkoutSession({
                     {exerciseSets.length} set{exerciseSets.length === 1 ? '' : 's'}
                   </p>
                 </div>
-                {exerciseSets.length ? (
-                  <span className="text-xs text-zinc-400">
-                    Latest: {new Date(exerciseSets[exerciseSets.length - 1].created_at).toLocaleTimeString()}
-                  </span>
-                ) : null}
+                <div className="flex items-center gap-2">
+                  {exerciseSets.length ? (
+                    <span className="text-xs text-zinc-400">
+                      Latest: {new Date(exerciseSets[exerciseSets.length - 1].created_at).toLocaleTimeString()}
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveExercise(exerciseName)}
+                    disabled={removingExercise === exerciseName}
+                    aria-label={`Remove ${exerciseName} from this workout`}
+                    title="Remove exercise"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                  >
+                    {removingExercise === exerciseName ? (
+                      <span className="text-[10px]">…</span>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {exerciseSets.length ? (

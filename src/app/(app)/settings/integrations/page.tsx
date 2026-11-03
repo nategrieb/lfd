@@ -1,13 +1,12 @@
 import { redirect } from 'next/navigation'
+import { getAuthUser } from '@/lib/auth-user'
 import { createServerSupabase } from '@/lib/supabase-server'
 import StrongImporter from './StrongImporter'
 import { ConnectStravaButton, DisconnectStravaButton, StravaConnectedBadge } from './StravaButtons'
 
 export default async function IntegrationsPage() {
   const supabase = await createServerSupabase()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthUser()
 
   if (!user?.id) redirect('/login')
 

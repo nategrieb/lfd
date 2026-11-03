@@ -1,4 +1,5 @@
 import { createServerSupabase } from '@/lib/supabase-server'
+import { getAuthUser } from '@/lib/auth-user'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import DeleteWorkoutButton from './DeleteWorkoutButton'
@@ -11,9 +12,7 @@ import SyncToStravaButton from './SyncToStravaButton'
 export default async function WorkoutSummaryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: workoutId } = await params
   const supabase = await createServerSupabase()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthUser()
 
   if (!user?.id) {
     redirect('/login')
