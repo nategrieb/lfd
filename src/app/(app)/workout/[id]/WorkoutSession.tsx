@@ -2,7 +2,7 @@
 
 import ExerciseSearchInput from '@/components/ExerciseSearchInput'
 import { QUICK_PICKS, plainSlug } from '@/lib/exercise-catalogue'
-import { useMemo, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { addSet, cancelWorkoutDraft, deleteExercise, deleteSet, finishWorkout, updateSet, updateWorkoutDetails, updateWorkoutName } from '../actions'
@@ -168,6 +168,37 @@ export default function WorkoutSession({
     }
     return fromSets
   })
+
+  // An exercise added with no sets yet lives only on this screen, so remember the list on this device: leaving to
+  // look at a lift's history (or reloading) must not make the exercise vanish.
+  const storageKey = `lfd:exercise-order:${workoutId}`
+  const orderLoaded = useRef(false)
+  useEffect(() => {
+    if (workoutStatus === 'completed') {
+      localStorage.removeItem(storageKey)
+      return
+    }
+    try {
+      const stored = JSON.parse(localStorage.getItem(storageKey) ?? '[]') as string[]
+      if (stored.length) {
+        setExerciseOrder((prev) => {
+          const kept = stored.filter((name) => typeof name === 'string')
+          return [...kept, ...prev.filter((name) => !kept.includes(name))]
+        })
+      }
+    } catch {
+      // Unreadable storage: the list simply starts from the logged sets.
+    }
+    orderLoaded.current = true
+  }, [storageKey, workoutStatus])
+  useEffect(() => {
+    if (!orderLoaded.current || workoutStatus === 'completed') return
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(exerciseOrder))
+    } catch {
+      // ignore
+    }
+  }, [exerciseOrder, storageKey, workoutStatus])
 
   // Pending sets: pre-filled from program prescription, confirmed one-by-one by the user
   const [pendingSets, setPendingSets] = useState<PendingSet[]>(() =>
@@ -503,6 +534,7 @@ export default function WorkoutSession({
         return
       }
 
+      localStorage.removeItem(storageKey)
       router.push('/')
     })
   }
