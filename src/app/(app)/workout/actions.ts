@@ -208,37 +208,48 @@ export async function getLastSessionSets({ exerciseName, workoutId }: { exercise
     .ilike('name', catalogueName.trim().replace(/[%_\\]/g, '\\$&'))
     .maybeSingle()
 
-  const COLUMNS = 'workout_id, weight, reps, rpe, created_at, sort_order'
-  type Row = { workout_id: string; weight: number; reps: number; rpe: number | null; created_at: string; sort_order: number | null }
-  let rows: Row[] = []
-  if (catalogueRow?.id) {
+  // Find the most recent finished workout that had this exercise, by the workout's own date (imported sets all
+  // share one saved-at time, so the sets' own timestamps cannot tell sessions apart).
+  async function latestWorkoutId(column: 'exercise_id' | 'exercise_name', value: string): Promise<string | null> {
     const { data } = await supabase
       .from('sets')
-      .select(COLUMNS)
-      .eq('user_id', user.id)
-      .eq('exercise_id', catalogueRow.id)
+      .select('workout_id, workout:workouts!inner(created_at, status)')
+      .eq('user_id', user!.id)
+      .eq(column, value)
       .neq('workout_id', workoutId)
-      .order('created_at', { ascending: false })
-      .limit(60)
-    rows = (data ?? []) as Row[]
-  }
-  if (rows.length === 0) {
-    const { data } = await supabase
-      .from('sets')
-      .select(COLUMNS)
-      .eq('user_id', user.id)
-      .eq('exercise_name', exerciseName)
-      .neq('workout_id', workoutId)
-      .order('created_at', { ascending: false })
-      .limit(60)
-    rows = (data ?? []) as Row[]
+      .eq('workout.status', 'completed')
+      .limit(2000)
+    let best: { id: string; at: string } | null = null
+    for (const row of (data ?? []) as unknown as { workout_id: string; workout: { created_at: string } | null }[]) {
+      const at = row.workout?.created_at ?? ''
+      if (!best || at > best.at) best = { id: row.workout_id, at }
+    }
+    return best?.id ?? null
   }
 
-  // The most recent workout that had it, with its sets back in the order they were done (no cardio rows).
-  const lastWorkout = rows[0]?.workout_id
-  const sets = rows
-    .filter((row) => row.workout_id === lastWorkout && (row.weight > 0 || row.reps > 0))
-    .sort((a, b) => a.created_at.localeCompare(b.created_at) || (a.sort_order ?? 0) - (b.sort_order ?? 0))
+  let lastWorkout: string | null = null
+  let matchColumn: 'exercise_id' | 'exercise_name' = 'exercise_name'
+  let matchValue = exerciseName
+  if (catalogueRow?.id) {
+    lastWorkout = await latestWorkoutId('exercise_id', catalogueRow.id)
+    if (lastWorkout) {
+      matchColumn = 'exercise_id'
+      matchValue = catalogueRow.id
+    }
+  }
+  if (!lastWorkout) lastWorkout = await latestWorkoutId('exercise_name', exerciseName)
+  if (!lastWorkout) return { success: true as const, sets: [] as { weight: number; reps: number; rpe: number | null }[] }
+
+  // Its sets in the order they were done (no cardio rows).
+  const { data: rows } = await supabase
+    .from('sets')
+    .select('weight, reps, rpe, created_at, sort_order')
+    .eq('user_id', user.id)
+    .eq('workout_id', lastWorkout)
+    .eq(matchColumn, matchValue)
+  const sets = ((rows ?? []) as { weight: number; reps: number; rpe: number | null; created_at: string; sort_order: number | null }[])
+    .filter((row) => row.weight > 0 || row.reps > 0)
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.created_at.localeCompare(b.created_at))
     .map((row) => ({ weight: Number(row.weight), reps: Number(row.reps), rpe: row.rpe != null ? Number(row.rpe) : null }))
 
   return { success: true as const, sets }
