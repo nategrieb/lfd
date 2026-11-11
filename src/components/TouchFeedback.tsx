@@ -17,6 +17,20 @@ export default function TouchFeedback() {
     return () => document.removeEventListener('touchstart', noop)
   }, [])
 
+  // Tapping a number field means typing a new number, so select what's there instead of making you clear it first.
+  useEffect(() => {
+    const onFocus = (e: FocusEvent) => {
+      const el = e.target as HTMLInputElement | null
+      if (!el || el.tagName !== 'INPUT') return
+      if (el.type === 'number' || el.inputMode === 'decimal' || el.inputMode === 'numeric') {
+        el.select()
+        requestAnimationFrame(() => el.select())
+      }
+    }
+    document.addEventListener('focusin', onFocus)
+    return () => document.removeEventListener('focusin', onFocus)
+  }, [])
+
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return
