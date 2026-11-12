@@ -188,6 +188,73 @@ export async function deleteSet({ setId, workoutId }: { setId: string; workoutId
   return { success: true }
 }
 
+/**
+ * What you did the last time you did this exercise (another workout): its sets in order, so a new session can start
+ * from them and you only change what is different. Matches the catalogue exercise first, then the typed name.
+ */
+export async function getLastSessionSets({ exerciseName, workoutId }: { exerciseName: string; workoutId: string }) {
+  if (!exerciseName) return { success: false as const, sets: [] as { weight: number; reps: number; rpe: number | null }[] }
+
+  const supabase = await createServerSupabase()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user?.id) return { success: false as const, sets: [] }
+
+  const catalogueName = resolveLegacyName(exerciseName) ?? exerciseName
+  const { data: catalogueRow } = await supabase
+    .from('exercises')
+    .select('id')
+    .ilike('name', catalogueName.trim().replace(/[%_\\]/g, '\\$&'))
+    .maybeSingle()
+
+  // Find the most recent finished workout that had this exercise, by the workout's own date (imported sets all
+  // share one saved-at time, so the sets' own timestamps cannot tell sessions apart).
+  async function latestWorkoutId(column: 'exercise_id' | 'exercise_name', value: string): Promise<string | null> {
+    const { data } = await supabase
+      .from('sets')
+      .select('workout_id, workout:workouts!inner(created_at, status)')
+      .eq('user_id', user!.id)
+      .eq(column, value)
+      .neq('workout_id', workoutId)
+      .eq('workout.status', 'completed')
+      .limit(2000)
+    let best: { id: string; at: string } | null = null
+    for (const row of (data ?? []) as unknown as { workout_id: string; workout: { created_at: string } | null }[]) {
+      const at = row.workout?.created_at ?? ''
+      if (!best || at > best.at) best = { id: row.workout_id, at }
+    }
+    return best?.id ?? null
+  }
+
+  let lastWorkout: string | null = null
+  let matchColumn: 'exercise_id' | 'exercise_name' = 'exercise_name'
+  let matchValue = exerciseName
+  if (catalogueRow?.id) {
+    lastWorkout = await latestWorkoutId('exercise_id', catalogueRow.id)
+    if (lastWorkout) {
+      matchColumn = 'exercise_id'
+      matchValue = catalogueRow.id
+    }
+  }
+  if (!lastWorkout) lastWorkout = await latestWorkoutId('exercise_name', exerciseName)
+  if (!lastWorkout) return { success: true as const, sets: [] as { weight: number; reps: number; rpe: number | null }[] }
+
+  // Its sets in the order they were done (no cardio rows).
+  const { data: rows } = await supabase
+    .from('sets')
+    .select('weight, reps, rpe, created_at, sort_order')
+    .eq('user_id', user.id)
+    .eq('workout_id', lastWorkout)
+    .eq(matchColumn, matchValue)
+  const sets = ((rows ?? []) as { weight: number; reps: number; rpe: number | null; created_at: string; sort_order: number | null }[])
+    .filter((row) => row.weight > 0 || row.reps > 0)
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.created_at.localeCompare(b.created_at))
+    .map((row) => ({ weight: Number(row.weight), reps: Number(row.reps), rpe: row.rpe != null ? Number(row.rpe) : null }))
+
+  return { success: true as const, sets }
+}
+
 /** Remove an exercise from a workout: deletes every set logged for it (and their video clips). */
 export async function deleteExercise({ workoutId, exerciseName }: { workoutId: string; exerciseName: string }) {
   if (!workoutId || !exerciseName) {

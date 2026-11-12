@@ -5,7 +5,7 @@ import { QUICK_PICKS, plainSlug } from '@/lib/exercise-catalogue'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { addSet, cancelWorkoutDraft, deleteExercise, deleteSet, finishWorkout, updateSet, updateWorkoutDetails, updateWorkoutName } from '../actions'
+import { addSet, cancelWorkoutDraft, deleteExercise, deleteSet, finishWorkout, getLastSessionSets, updateSet, updateWorkoutDetails, updateWorkoutName } from '../actions'
 import AddSetForm from './AddSetForm'
 import VideoUpload from './VideoUpload'
 import FinishWorkoutSheet from './FinishWorkoutSheet'
@@ -59,6 +59,8 @@ type PendingSet = {
   weight: string   // pre-filled but editable
   reps: string
   rpe: string
+  /** Pre-filled from your last session of this exercise. */
+  fromLast?: boolean
 }
 
 function buildInitialPendingSets(
@@ -216,6 +218,7 @@ export default function WorkoutSession({
   const [newExerciseName, setNewExerciseName] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  const savedName = useRef(initialWorkoutName)
   const [removingExercise, setRemovingExercise] = useState<string | null>(null)
   const [showFinishSheet, setShowFinishSheet] = useState(false)
   const [lastAddedExercise, setLastAddedExercise] = useState<string | null>(null)
@@ -341,6 +344,27 @@ export default function WorkoutSession({
     setExerciseOrder((prev) => prev.filter((name) => name !== exerciseName))
   }
 
+  /** A fresh exercise starts with what you did last time, ready to adjust and check off. Program prescriptions win. */
+  const prefillFromLastSession = async (exerciseName: string) => {
+    if (scheduledSetGroupsMap?.get(exerciseName.toLowerCase())?.length) return
+    const result = await getLastSessionSets({ exerciseName, workoutId })
+    if (!result.success || result.sets.length === 0) return
+    const stamp = Date.now()
+    const added: PendingSet[] = result.sets.map((set, i) => ({
+      localId: `last-${stamp}-${i}`,
+      exerciseName,
+      weight: String(set.weight),
+      reps: String(set.reps),
+      rpe: set.rpe != null ? String(set.rpe) : '',
+      fromLast: true,
+    }))
+    setPendingSets((prev) => [...prev, ...added])
+    setPendingDrafts((prev) => ({
+      ...prev,
+      ...Object.fromEntries(added.map((p) => [p.localId, { weight: p.weight, reps: p.reps, rpe: p.rpe }])),
+    }))
+  }
+
   const handleAddExercise = () => {
     const trimmed = newExerciseName.trim()
     if (!trimmed) {
@@ -359,6 +383,7 @@ export default function WorkoutSession({
     setExerciseOrder((prev) => [...prev, trimmed])
     setNewExerciseName('')
     setLastAddedExercise(trimmed)
+    prefillFromLastSession(trimmed)
 
     // Bring the new exercise card into view so the user can log sets immediately.
     setTimeout(() => {
@@ -407,6 +432,20 @@ export default function WorkoutSession({
     })
   }
 
+  // Save the workout name as you type, so it is not lost if you leave the screen before finishing.
+  useEffect(() => {
+    const next = draftWorkoutName.trim()
+    if (!next || next === savedName.current) return
+    const timer = setTimeout(async () => {
+      const result = await updateWorkoutName({ workoutId, name: next })
+      if (result.success) {
+        savedName.current = next
+        setWorkoutName(next)
+      }
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [draftWorkoutName, workoutId])
+
   const persistAllChanges = async () => {
     const nextName = draftWorkoutName.trim()
     if (!nextName) {
@@ -423,6 +462,7 @@ export default function WorkoutSession({
         return false
       }
       if (nameResult.name) {
+        savedName.current = nameResult.name
         setWorkoutName(nameResult.name)
         setDraftWorkoutName(nameResult.name)
       }
@@ -664,6 +704,16 @@ export default function WorkoutSession({
           exerciseOrder.map((exerciseName) => {
             const exerciseSets = groupedSets[exerciseName] ?? []
             const latestSet = exerciseSets.length ? exerciseSets[exerciseSets.length - 1] : null
+            // The next set starts from the last set as it is now (including edits you haven't saved yet), not as it was saved.
+            const latestDraft = latestSet ? setDrafts[latestSet.id] : undefined
+            const draftNumber = (text: string | undefined) => (text != null && text.trim() !== '' && Number.isFinite(Number(text)) ? Number(text) : undefined)
+            const latestEdited = latestSet
+              ? {
+                  weight: draftNumber(latestDraft?.weight) ?? latestSet.weight,
+                  reps: draftNumber(latestDraft?.reps) ?? latestSet.reps,
+                  rpe: latestDraft ? (draftNumber(latestDraft.rpe) ?? null) : latestSet.rpe,
+                }
+              : undefined
             return (
             <div id={exerciseDomId(exerciseName)} key={exerciseName} className="rounded-xl border border-zinc-100 bg-white p-4 shadow-sm">
               {(() => {
@@ -871,7 +921,11 @@ export default function WorkoutSession({
                 )
                 if (!myPending.length) return null
                 return (
-                  <ul className={`${exerciseSets.length > 0 ? 'mt-4 border-t border-zinc-800 pt-3' : 'mt-2'} space-y-2`}>
+                  <>
+                  {myPending.some((p) => p.fromLast) && (
+                    <p className={`${exerciseSets.length > 0 ? 'mt-4' : 'mt-3'} text-[10px] font-bold uppercase tracking-widest text-green-700`}>From your last session · edit, then check off</p>
+                  )}
+                  <ul className={`${exerciseSets.length > 0 ? 'mt-2 border-t border-zinc-800 pt-3' : 'mt-2'} space-y-2`}>
                     {myPending.map((p, index) => {
                       const draft = pendingDrafts[p.localId] ?? { weight: p.weight, reps: p.reps, rpe: p.rpe }
                       const isConfirming = confirmingLocalId === p.localId
@@ -947,6 +1001,7 @@ export default function WorkoutSession({
                       )
                     })}
                   </ul>
+                  </>
                 )
               })()}
 
@@ -958,9 +1013,9 @@ export default function WorkoutSession({
                 <AddSetForm
                   workoutId={workoutId}
                   exerciseName={exerciseName}
-                  defaultWeight={latestSet?.weight ?? undefined}
-                  defaultReps={latestSet?.reps ?? undefined}
-                  defaultRpe={latestSet?.rpe ?? undefined}
+                  defaultWeight={latestEdited?.weight}
+                  defaultReps={latestEdited?.reps}
+                  defaultRpe={latestEdited?.rpe}
                   autoOpen={lastAddedExercise === exerciseName}
                   onAdded={(set) => { handleSetAdded({ ...set, video_url: null }); setLastAddedExercise(null) }}
                 />
