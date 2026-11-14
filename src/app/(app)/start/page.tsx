@@ -4,8 +4,8 @@ import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase-server'
 import StartFreeWorkoutButton from './StartFreeWorkoutButton'
 import RotationCard from './RotationCard'
-import { currentRotation } from '@/lib/ppl-server'
-import { ROTATION, daysAgo } from '@/lib/ppl'
+import { getRotation } from '@/lib/rotation-server'
+import { agoText } from '@/lib/rotation'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,16 +49,11 @@ export default async function StartPage() {
         .maybeSingle()
     : { data: null }
 
-  // Push / Pull / Legs: the suggestion (longest since you did it), and for each type what a start would copy.
-  const { next: rotationNext, last: rotationLast } = await currentRotation(supabase, user.id)
-  const ago = (type: (typeof ROTATION)[number]) => {
-    const days = daysAgo(rotationLast[type])
-    return `${type} ${days === null ? 'never' : days === 0 ? 'today' : days === 1 ? '1 day ago' : `${days} days ago`}`
-  }
-  const rotationRecency = ROTATION.map(ago).join(' · ')
-  const rotationOptions = Object.fromEntries(
+  // Your rotation (the types you chose): the suggestion is whichever you did longest ago; for each, what a start copies.
+  const rotation = await getRotation(supabase, user.id)
+  const rotationOptions: Record<string, { hint: string | null; ago: string }> = Object.fromEntries(
     await Promise.all(
-      ROTATION.map(async (type) => {
+      rotation.types.map(async (type) => {
         const { data: sources } = await supabase
           .from('workouts')
           .select('id, created_at, sets(exercise_name)')
@@ -71,10 +66,10 @@ export default async function StartPage() {
         const hint = source
           ? `Starts from your last ${type}, ${new Date(source.created_at as string).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · ${new Set((source.sets as { exercise_name: string }[]).map((x) => x.exercise_name)).size} exercises`
           : null
-        return [type, { hint, recency: rotationRecency }] as const
+        return [type, { hint, ago: agoText(rotation.last[type]) }] as const
       }),
     ),
-  ) as Record<(typeof ROTATION)[number], { hint: string | null; recency: string }>
+  )
 
   const programWorkout = todayScheduled ?? nextScheduled
   const tw = programWorkout?.template_workouts as any
@@ -87,7 +82,7 @@ export default async function StartPage() {
 
       <div className="flex flex-col gap-3">
 
-        <RotationCard suggested={rotationNext} options={rotationOptions} />
+        {rotation.next && <RotationCard types={rotation.types} suggested={rotation.next} options={rotationOptions} />}
 
         {/* Program workout card */}
         {programWorkout && tw ? (
@@ -110,20 +105,15 @@ export default async function StartPage() {
               </svg>
             </div>
           </Link>
-        ) : (
-          <div className="rounded-3xl border border-dashed border-zinc-200 bg-white px-6 py-6">
-            <p className="text-sm font-semibold text-zinc-400">No program scheduled</p>
-            <p className="mt-0.5 text-xs text-zinc-300">
-              Enroll in a program to see your next session here.
-            </p>
-            <Link href="/search?tab=programs" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-green-700 hover:underline">
-              Browse programs
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-                <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
-              </svg>
-            </Link>
-          </div>
-        )}
+        ) : !rotation.next ? (
+          <Link href="/programs" className="flex items-center justify-between rounded-2xl border border-dashed border-zinc-200 bg-white px-5 py-4 text-sm text-zinc-500 transition hover:border-zinc-300">
+            <span>
+              <span className="block font-semibold text-zinc-700">Follow a routine</span>
+              <span className="block text-xs text-zinc-400">Set the workouts you rotate through, or join a program</span>
+            </span>
+            <span aria-hidden="true">›</span>
+          </Link>
+        ) : null}
 
         {/* Free workout card */}
         <div className="rounded-3xl border border-zinc-100 bg-white px-6 py-6 shadow-sm">

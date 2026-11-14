@@ -1,7 +1,8 @@
 'use server'
 
 import { createServerSupabase } from '@/lib/supabase-server'
-import { isRotationType } from '@/lib/ppl'
+import { WORKOUT_TYPES, cleanTypes } from '@/lib/workout-types'
+import { revalidatePath } from 'next/cache'
 
 export async function startFreeWorkout(): Promise<{ id?: string; error?: string }> {
   const supabase = await createServerSupabase()
@@ -29,7 +30,7 @@ export async function startFreeWorkout(): Promise<{ id?: string; error?: string 
  * sets. "Clear all" on the workout screen turns it into a blank one.
  */
 export async function startRotationWorkout(type: string): Promise<{ id?: string; error?: string }> {
-  if (!isRotationType(type)) return { error: 'Unknown type.' }
+  if (!(WORKOUT_TYPES as readonly string[]).includes(type)) return { error: 'Unknown type.' }
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user?.id) return { error: 'Not authenticated.' }
@@ -55,3 +56,15 @@ export async function startRotationWorkout(type: string): Promise<{ id?: string;
   return { id: data.id }
 }
 
+
+/** Choose the workout types you rotate through (empty to turn the rotation off). */
+export async function saveRotation(types: string[]): Promise<{ error?: string }> {
+  const supabase = await createServerSupabase()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.id) return { error: 'Not authenticated.' }
+  const { error } = await supabase.from('profiles').update({ rotation: cleanTypes(types) }).eq('id', user.id)
+  if (error) return { error: error.message.includes('rotation') ? 'Run the rotation SQL in Supabase first.' : error.message }
+  revalidatePath('/start')
+  revalidatePath('/programs')
+  return {}
+}

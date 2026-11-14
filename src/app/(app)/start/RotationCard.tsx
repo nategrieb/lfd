@@ -1,27 +1,32 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { startRotationWorkout } from './actions'
-import { ROTATION, type RotationType } from '@/lib/ppl'
-import { TYPE_PILL } from '@/lib/workout-types'
+import { TYPE_PILL, type WorkoutType } from '@/lib/workout-types'
 
-export type RotationOption = { hint: string | null; recency: string }
+export type RotationOption = { hint: string | null; ago: string }
 
-/** Push / Pull / Legs: the suggested one is selected; tap another to choose it. Start copies your last one. */
-export default function RotationCard({ suggested, options }: { suggested: RotationType; options: Record<RotationType, RotationOption> }) {
+/** Your rotation: the suggested type is selected; tap another pill to choose it. Start copies your last one. */
+export default function RotationCard({ types, suggested, options }: { types: WorkoutType[]; suggested: WorkoutType; options: Record<string, RotationOption> }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
-  const [chosen, setChosen] = useState<RotationType>(suggested)
+  const [chosen, setChosen] = useState<WorkoutType>(suggested)
   const [error, setError] = useState<string | null>(null)
   const option = options[chosen]
 
   return (
-    <div className="rounded-3xl border border-zinc-100 bg-white px-6 py-6 shadow-sm">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Push · Pull · Legs</p>
+    <div className="rounded-3xl border border-zinc-100 bg-white px-6 py-5 shadow-sm">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Your rotation</p>
+        <Link href="/programs" className="text-[11px] font-semibold text-zinc-400 hover:text-zinc-700">
+          Change
+        </Link>
+      </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2" role="radiogroup" aria-label="Which workout">
-        {ROTATION.map((type) => {
+      <div className="mt-3 flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="Which workout">
+        {types.map((type) => {
           const on = type === chosen
           return (
             <button
@@ -30,17 +35,21 @@ export default function RotationCard({ suggested, options }: { suggested: Rotati
               role="radio"
               aria-checked={on}
               onClick={() => setChosen(type)}
-              className={`relative rounded-2xl px-2 py-3 text-base font-extrabold ring-1 ring-inset transition-colors ${on ? TYPE_PILL[type] : 'bg-white text-zinc-400 ring-zinc-200'}`}
+              className={`rounded-full px-3 py-1.5 text-xs font-bold ring-1 ring-inset transition-colors ${on ? TYPE_PILL[type] : 'bg-white text-zinc-400 ring-zinc-200'}`}
             >
               {type}
-              {type === suggested && <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-zinc-900 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">Next</span>}
+              {type === suggested && <span className={`ml-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle ${on ? 'bg-current' : 'bg-zinc-400'}`} aria-label="suggested next" />}
             </button>
           )
         })}
       </div>
 
-      <p className="mt-4 text-xs text-zinc-500">{option.hint ?? `You haven’t logged a ${chosen} yet, so this starts empty.`}</p>
-      <p className="mt-0.5 text-xs text-zinc-300">{option.recency}</p>
+      <p className="mt-3 text-sm font-semibold text-zinc-900">
+        {chosen}
+        {chosen === suggested && <span className="ml-2 text-xs font-medium text-zinc-400">next up</span>}
+        <span className="ml-2 text-xs font-medium text-zinc-400">last {option.ago}</span>
+      </p>
+      <p className="mt-0.5 text-xs text-zinc-500">{option.hint ?? `You haven’t logged a ${chosen} yet, so this starts empty.`}</p>
 
       <button
         type="button"
