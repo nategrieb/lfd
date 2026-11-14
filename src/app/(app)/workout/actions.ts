@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { resolveLegacyName } from '@/lib/legacy-exercise-map'
 import { canonicalName } from '@/lib/lifts'
+import { cleanTypes } from '@/lib/workout-types'
 
 export async function startWorkout() {
   const supabase = await createServerSupabase()
@@ -253,6 +254,29 @@ export async function getLastSessionSets({ exerciseName, workoutId }: { exercise
     .map((row) => ({ weight: Number(row.weight), reps: Number(row.reps), rpe: row.rpe != null ? Number(row.rpe) : null }))
 
   return { success: true as const, sets }
+}
+
+/** Tag a workout with its types (Push, Pull, Legs...). Unknown values are dropped. */
+export async function updateWorkoutTypes({ workoutId, types }: { workoutId: string; types: string[] }) {
+  if (!workoutId) return { success: false, message: 'Missing workout.' }
+
+  const supabase = await createServerSupabase()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user?.id) return { success: false, message: 'Not authenticated.' }
+
+  const clean = cleanTypes(types)
+  const { error } = await supabase.from('workouts').update({ workout_types: clean }).eq('id', workoutId).eq('user_id', user.id)
+  if (error) {
+    return { success: false, message: error.message.includes('workout_types') ? 'Run the workout types SQL in Supabase first.' : error.message }
+  }
+
+  revalidatePath(`/workout/${workoutId}`)
+  revalidatePath(`/workout/${workoutId}/summary`)
+  revalidatePath('/profile')
+  revalidatePath('/')
+  return { success: true, types: clean }
 }
 
 /** Remove an exercise from a workout: deletes every set logged for it (and their video clips). */

@@ -1,4 +1,5 @@
 import { createServerSupabase } from '@/lib/supabase-server'
+import WorkoutTypePills from '@/components/WorkoutTypePills'
 import { getAuthUser } from '@/lib/auth-user'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -20,7 +21,7 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
 
   const { data: workout } = await supabase
     .from('workouts')
-    .select('id, name, created_at, status, user_id, location, post_photos')
+    .select('id, name, created_at, status, user_id, location, post_photos, workout_types')
     .eq('id', workoutId)
     .single()
 
@@ -84,6 +85,7 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
         <div>
           <h1 className="text-2xl font-semibold mb-1">{workout.name?.trim() || 'Workout Summary'}</h1>
           <p className="text-sm text-zinc-400">{new Date(workout.created_at).toLocaleString()}</p>
+          <WorkoutTypePills types={(workout as any).workout_types} className="mt-2" />
           {(workout as any).location && (
             <p className="mt-1.5 flex items-center gap-1.5 text-sm text-zinc-300">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 shrink-0 text-zinc-400" aria-hidden="true">

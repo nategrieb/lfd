@@ -5,7 +5,7 @@ import { QUICK_PICKS, plainSlug } from '@/lib/exercise-catalogue'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { addSet, cancelWorkoutDraft, deleteExercise, deleteSet, finishWorkout, getLastSessionSets, updateSet, updateWorkoutDetails, updateWorkoutName } from '../actions'
+import { addSet, cancelWorkoutDraft, deleteExercise, deleteSet, finishWorkout, getLastSessionSets, updateWorkoutTypes, updateSet, updateWorkoutDetails, updateWorkoutName } from '../actions'
 import AddSetForm from './AddSetForm'
 import VideoUpload from './VideoUpload'
 import FinishWorkoutSheet from './FinishWorkoutSheet'
@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase'
 import { formatTempo, formatRest } from '@/lib/programs'
 import { isCardioSet, formatCardioDistance, formatCardioDuration } from '@/lib/feed'
 import RestTimer from './RestTimer'
+import { TYPE_PILL, WORKOUT_TYPES, cleanTypes, type WorkoutType } from '@/lib/workout-types'
 import WorkoutVideoReelModal from '@/components/WorkoutVideoReelModal'
 
 type ScheduledSet = {
@@ -51,6 +52,7 @@ type WorkoutSessionProps = {
   scheduledSets?: ScheduledSet[]
   initialLocation?: string | null
   initialPostPhotos?: string[] | null
+  initialTypes?: string[]
 }
 
 type PendingSet = {
@@ -124,6 +126,7 @@ export default function WorkoutSession({
   scheduledSets,
   initialLocation,
   initialPostPhotos,
+  initialTypes,
 }: WorkoutSessionProps) {
   // Build a map from canonical lowercase exercise name → all scheduled set groups (in order)
   const scheduledSetGroupsMap = useMemo(() => {
@@ -141,6 +144,7 @@ export default function WorkoutSession({
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [workoutName, setWorkoutName] = useState(initialWorkoutName)
+  const [types, setTypes] = useState<WorkoutType[]>(() => cleanTypes(initialTypes))
   const [draftWorkoutName, setDraftWorkoutName] = useState(initialWorkoutName)
   const [sets, setSets] = useState<WorkoutSet[]>(initialSets)
   const [setDrafts, setSetDrafts] = useState<Record<string, { weight: string; reps: string; rpe: string }>>(
@@ -363,6 +367,18 @@ export default function WorkoutSession({
       ...prev,
       ...Object.fromEntries(added.map((p) => [p.localId, { weight: p.weight, reps: p.reps, rpe: p.rpe }])),
     }))
+  }
+
+  const toggleType = async (type: WorkoutType) => {
+    const next = types.includes(type) ? types.filter((t) => t !== type) : cleanTypes([...types, type])
+    const previous = types
+    setTypes(next) // shows at once; saved right away
+    const result = await updateWorkoutTypes({ workoutId, types: next })
+    if (!result.success) {
+      setTypes(previous)
+      setMessage(result.message ?? 'Could not save the type.')
+      setTimeout(() => setMessage(null), 3000)
+    }
   }
 
   const handleAddExercise = () => {
@@ -596,6 +612,26 @@ export default function WorkoutSession({
           onBeforeFinish={persistAllChanges}
         />
       )}
+      <div className="rounded-xl border border-zinc-100 bg-white p-4 shadow-sm">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-400">Type</label>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {WORKOUT_TYPES.map((type) => {
+            const on = types.includes(type)
+            return (
+              <button
+                key={type}
+                type="button"
+                aria-pressed={on}
+                onClick={() => toggleType(type)}
+                className={`rounded-full px-3.5 py-1.5 text-xs font-bold ring-1 ring-inset transition-colors ${on ? TYPE_PILL[type] : 'bg-white text-zinc-400 ring-zinc-200'}`}
+              >
+                {type}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
       <div className="rounded-xl border border-zinc-100 bg-white p-4 shadow-sm">
         <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-400">Workout Name</label>
         <div className="mt-2 flex items-center gap-2">

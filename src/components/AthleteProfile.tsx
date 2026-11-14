@@ -88,7 +88,7 @@ export default async function AthleteProfile({
     supabase.from('workouts').select('id, created_at').eq('user_id', athlete.id).eq('status', 'completed').gte('created_at', yearAgo.toISOString()),
     supabase
       .from('workouts')
-      .select('id, name, created_at, user_id, post_photos, sets(id, exercise_name, weight, reps, rpe, video_url, created_at, distance_m, duration_seconds)')
+      .select('id, name, created_at, user_id, post_photos, workout_types, sets(id, exercise_name, weight, reps, rpe, video_url, created_at, distance_m, duration_seconds)')
       .eq('user_id', athlete.id)
       .eq('status', 'completed')
       .order('created_at', { ascending: false })
@@ -123,7 +123,8 @@ export default async function AthleteProfile({
     liftsTracked = new Set((names.data ?? []).map((r: { exercise_name: string }) => nameToSlug(r.exercise_name))).size
   }
 
-  const feedItems = buildFeed(workouts, liftsMap)
+  // Newest first, plainly. (The home feed ranks by highlights; your own page is a log you read in order.)
+  const feedItems = buildFeed(workouts, liftsMap).sort((a, b) => b.workout.created_at.localeCompare(a.workout.created_at))
   const calendarDates = [
     ...(calendarRows ?? []).map((w: { id: string; created_at: string }) => ({ date: w.created_at, id: w.id, status: 'completed' as const })),
     ...scheduled.map((sw) => ({ date: sw.scheduled_date, id: sw.id, status: 'planned' as const })),

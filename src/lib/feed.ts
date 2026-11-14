@@ -60,6 +60,7 @@ export type FeedWorkout = {
   user_id: string
   sets: FeedSet[]
   post_photos?: string[] | null
+  workout_types?: string[] | null
 }
 
 export type FeedItem = {
