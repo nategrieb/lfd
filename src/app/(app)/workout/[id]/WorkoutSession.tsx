@@ -53,6 +53,8 @@ type WorkoutSessionProps = {
   initialLocation?: string | null
   initialPostPhotos?: string[] | null
   initialTypes?: string[]
+  /** Set when this workout is a draft copied from an earlier one (the Push / Pull / Legs rotation). */
+  templateLabel?: string
 }
 
 type PendingSet = {
@@ -127,6 +129,7 @@ export default function WorkoutSession({
   initialLocation,
   initialPostPhotos,
   initialTypes,
+  templateLabel,
 }: WorkoutSessionProps) {
   // Build a map from canonical lowercase exercise name → all scheduled set groups (in order)
   const scheduledSetGroupsMap = useMemo(() => {
@@ -189,7 +192,9 @@ export default function WorkoutSession({
       if (stored.length) {
         setExerciseOrder((prev) => {
           const kept = stored.filter((name) => typeof name === 'string')
-          return [...kept, ...prev.filter((name) => !kept.includes(name))]
+          // An exercise you removed from a draft or program stays removed; anything with logged sets always stays.
+          const logged = new Set(initialSets.map((set) => set.exercise_name))
+          return [...kept, ...prev.filter((name) => !kept.includes(name) && logged.has(name))]
         })
       }
     } catch {
@@ -734,7 +739,14 @@ export default function WorkoutSession({
       )}
 
       <div className="mt-6 space-y-4">
-        <p className="text-xs text-zinc-400">Add sets inside each exercise card below.</p>
+        {templateLabel ? (
+          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3">
+            <p className="text-sm font-semibold text-green-800">{templateLabel}</p>
+            <p className="mt-0.5 text-xs text-green-700">Change the numbers and check each set off, remove what you don’t want, or cancel the draft and do your own.</p>
+          </div>
+        ) : (
+          <p className="text-xs text-zinc-400">Add sets inside each exercise card below.</p>
+        )}
 
         {exerciseOrder.length ? (
           exerciseOrder.map((exerciseName) => {

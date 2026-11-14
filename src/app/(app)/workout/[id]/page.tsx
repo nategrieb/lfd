@@ -19,7 +19,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
 
   const { data: workout } = await supabase
     .from('workouts')
-    .select('id, status, name, location, post_photos, workout_types')
+    .select('id, status, name, location, post_photos, workout_types, template_from')
     .eq('id', workoutId)
     .eq('user_id', userId)
     .single()
@@ -101,6 +101,48 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
     if (ssRows?.length) scheduledSets = ssRows as ScheduledSet[]
   }
 
+  // A Push / Pull / Legs rotation draft: copy the sets of the earlier workout it came from, as ready-to-check targets.
+  let templateLabel: string | undefined
+  const templateFrom = (workout as { template_from?: string | null }).template_from
+  if (!scheduledSets && templateFrom) {
+    const [{ data: source }, { data: sourceSets }] = await Promise.all([
+      supabase.from('workouts').select('created_at, workout_types').eq('id', templateFrom).maybeSingle(),
+      supabase.from('sets').select('exercise_name, weight, reps, rpe, created_at, sort_order').eq('workout_id', templateFrom).eq('user_id', userId),
+    ])
+    const ordered = ((sourceSets ?? []) as { exercise_name: string; weight: number; reps: number; rpe: number | null; created_at: string; sort_order: number | null }[])
+      .filter((s) => s.weight > 0 || s.reps > 0)
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.created_at.localeCompare(b.created_at))
+    const built: ScheduledSet[] = []
+    for (const exercise of [...new Set(ordered.map((s) => s.exercise_name))]) {
+      let previous: ScheduledSet | null = null
+      for (const s of ordered.filter((x) => x.exercise_name === exercise)) {
+        if (previous && previous.calculated_weight === s.weight && previous.reps === s.reps && previous.target_rpe === s.rpe) {
+          previous.sets_count += 1
+        } else {
+          previous = {
+            id: `tpl-${built.length}`,
+            sort_order: built.length,
+            exercise_name: exercise,
+            sets_count: 1,
+            reps: s.reps,
+            reps_note: null,
+            calculated_weight: s.weight,
+            percentage: null,
+            target_rpe: s.rpe,
+            tempo: null,
+            rest_seconds: null,
+          }
+          built.push(previous)
+        }
+      }
+    }
+    if (built.length > 0) {
+      scheduledSets = built
+      const kind = (source?.workout_types as string[] | undefined)?.find((t) => ['Push', 'Pull', 'Legs'].includes(t)) ?? 'workout'
+      templateLabel = `Draft from your last ${kind}, ${new Date(source?.created_at as string).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`
+    }
+  }
+
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6 px-5 py-8">
       <header>
@@ -119,6 +161,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
         initialLocation={(workout as any).location ?? null}
         initialPostPhotos={(workout as any).post_photos ?? []}
         initialTypes={(workout as any).workout_types ?? []}
+        templateLabel={templateLabel}
       />
     </div>
   )

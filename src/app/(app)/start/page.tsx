@@ -3,6 +3,8 @@ import { getAuthUser } from '@/lib/auth-user'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase-server'
 import StartFreeWorkoutButton from './StartFreeWorkoutButton'
+import RotationCard from './RotationCard'
+import { currentRotation } from '@/lib/ppl-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,6 +48,21 @@ export default async function StartPage() {
         .maybeSingle()
     : { data: null }
 
+  // Push / Pull / Legs: what comes after your last one, and what the draft would be copied from.
+  const { next: rotationNext } = await currentRotation(supabase, user.id)
+  const { data: rotationSources } = await supabase
+    .from('workouts')
+    .select('id, created_at, sets(exercise_name)')
+    .eq('user_id', user.id)
+    .eq('status', 'completed')
+    .contains('workout_types', [rotationNext])
+    .order('created_at', { ascending: false })
+    .limit(8)
+  const rotationSource = (rotationSources ?? []).find((w) => Array.isArray(w.sets) && w.sets.length > 0)
+  const rotationHint = rotationSource
+    ? `Draft from your last ${rotationNext}, ${new Date(rotationSource.created_at as string).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · ${new Set((rotationSource.sets as { exercise_name: string }[]).map((x) => x.exercise_name)).size} exercises`
+    : null
+
   const programWorkout = todayScheduled ?? nextScheduled
   const tw = programWorkout?.template_workouts as any
   const isToday = !!todayScheduled
@@ -56,6 +73,8 @@ export default async function StartPage() {
       <p className="mb-8 text-sm text-zinc-400">Choose how you want to train today.</p>
 
       <div className="flex flex-col gap-3">
+
+        <RotationCard next={rotationNext} hint={rotationHint} />
 
         {/* Program workout card */}
         {programWorkout && tw ? (
