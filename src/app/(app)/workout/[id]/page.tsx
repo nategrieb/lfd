@@ -140,7 +140,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
     if (built.length > 0) {
       scheduledSets = built
       const kind = (source?.workout_types as string[] | undefined)?.find((t) => ['Push', 'Pull', 'Legs'].includes(t)) ?? 'workout'
-      templateLabel = `Draft from your last ${kind}, ${new Date(source?.created_at as string).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`
+      templateLabel = `Based on your last ${kind}, ${new Date(source?.created_at as string).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}`
     }
   }
 

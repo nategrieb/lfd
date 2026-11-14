@@ -49,25 +49,32 @@ export default async function StartPage() {
         .maybeSingle()
     : { data: null }
 
-  // Push / Pull / Legs: what comes after your last one, and what the draft would be copied from.
-  const { next: rotationNext, skipTo: rotationSkipTo, last: rotationLast } = await currentRotation(supabase, user.id)
+  // Push / Pull / Legs: the suggestion (longest since you did it), and for each type what a start would copy.
+  const { next: rotationNext, last: rotationLast } = await currentRotation(supabase, user.id)
   const ago = (type: (typeof ROTATION)[number]) => {
     const days = daysAgo(rotationLast[type])
     return `${type} ${days === null ? 'never' : days === 0 ? 'today' : days === 1 ? '1 day ago' : `${days} days ago`}`
   }
   const rotationRecency = ROTATION.map(ago).join(' · ')
-  const { data: rotationSources } = await supabase
-    .from('workouts')
-    .select('id, created_at, sets(exercise_name)')
-    .eq('user_id', user.id)
-    .eq('status', 'completed')
-    .contains('workout_types', [rotationNext])
-    .order('created_at', { ascending: false })
-    .limit(8)
-  const rotationSource = (rotationSources ?? []).find((w) => Array.isArray(w.sets) && w.sets.length > 0)
-  const rotationHint = rotationSource
-    ? `Draft from your last ${rotationNext}, ${new Date(rotationSource.created_at as string).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · ${new Set((rotationSource.sets as { exercise_name: string }[]).map((x) => x.exercise_name)).size} exercises`
-    : null
+  const rotationOptions = Object.fromEntries(
+    await Promise.all(
+      ROTATION.map(async (type) => {
+        const { data: sources } = await supabase
+          .from('workouts')
+          .select('id, created_at, sets(exercise_name)')
+          .eq('user_id', user.id)
+          .eq('status', 'completed')
+          .contains('workout_types', [type])
+          .order('created_at', { ascending: false })
+          .limit(8)
+        const source = (sources ?? []).find((w) => Array.isArray(w.sets) && w.sets.length > 0)
+        const hint = source
+          ? `Starts from your last ${type}, ${new Date(source.created_at as string).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · ${new Set((source.sets as { exercise_name: string }[]).map((x) => x.exercise_name)).size} exercises`
+          : null
+        return [type, { hint, recency: rotationRecency }] as const
+      }),
+    ),
+  ) as Record<(typeof ROTATION)[number], { hint: string | null; recency: string }>
 
   const programWorkout = todayScheduled ?? nextScheduled
   const tw = programWorkout?.template_workouts as any
@@ -80,7 +87,7 @@ export default async function StartPage() {
 
       <div className="flex flex-col gap-3">
 
-        <RotationCard next={rotationNext} skipTo={rotationSkipTo} hint={rotationHint} recency={rotationRecency} />
+        <RotationCard suggested={rotationNext} options={rotationOptions} />
 
         {/* Program workout card */}
         {programWorkout && tw ? (
