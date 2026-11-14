@@ -116,7 +116,8 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
     for (const exercise of [...new Set(ordered.map((s) => s.exercise_name))]) {
       let previous: ScheduledSet | null = null
       for (const s of ordered.filter((x) => x.exercise_name === exercise)) {
-        if (previous && previous.calculated_weight === s.weight && previous.reps === s.reps && previous.target_rpe === s.rpe) {
+        const weight = s.weight > 0 ? s.weight : null // bodyweight sets have no load to show
+        if (previous && previous.calculated_weight === weight && previous.reps === s.reps && previous.target_rpe === s.rpe) {
           previous.sets_count += 1
         } else {
           previous = {
@@ -126,7 +127,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
             sets_count: 1,
             reps: s.reps,
             reps_note: null,
-            calculated_weight: s.weight,
+            calculated_weight: weight,
             percentage: null,
             target_rpe: s.rpe,
             tempo: null,

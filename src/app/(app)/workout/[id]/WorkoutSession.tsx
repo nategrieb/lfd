@@ -419,10 +419,11 @@ export default function WorkoutSession({
     const draft = pendingDrafts[localId]
     if (!draft) return
 
-    const weight = Number(draft.weight)
+    // A blank weight is a bodyweight set (0 lbs); only reps are required.
+    const weight = draft.weight.trim() === '' ? 0 : Number(draft.weight)
     const reps = Number(draft.reps)
-    if (!draft.weight || !draft.reps || Number.isNaN(weight) || weight <= 0 || Number.isNaN(reps) || reps <= 0) {
-      setMessage('Enter weight and reps before confirming.')
+    if (!draft.reps || Number.isNaN(weight) || weight < 0 || Number.isNaN(reps) || reps <= 0) {
+      setMessage('Enter the reps before confirming.')
       setTimeout(() => setMessage(null), 2500)
       return
     }
@@ -431,7 +432,7 @@ export default function WorkoutSession({
     const formData = new FormData()
     formData.set('workout_id', workoutId)
     formData.set('exercise_name', pending.exerciseName)
-    formData.set('weight', draft.weight)
+    formData.set('weight', String(weight))
     formData.set('reps', draft.reps)
     if (draft.rpe) formData.set('rpe', draft.rpe)
 
