@@ -3,6 +3,9 @@ import { getAuthUser } from '@/lib/auth-user'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase-server'
 import StartFreeWorkoutButton from './StartFreeWorkoutButton'
+import RotationCard from './RotationCard'
+import { currentRotation } from '@/lib/ppl-server'
+import { ROTATION, daysAgo } from '@/lib/ppl'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,6 +49,26 @@ export default async function StartPage() {
         .maybeSingle()
     : { data: null }
 
+  // Push / Pull / Legs: what comes after your last one, and what the draft would be copied from.
+  const { next: rotationNext, skipTo: rotationSkipTo, last: rotationLast } = await currentRotation(supabase, user.id)
+  const ago = (type: (typeof ROTATION)[number]) => {
+    const days = daysAgo(rotationLast[type])
+    return `${type} ${days === null ? 'never' : days === 0 ? 'today' : days === 1 ? '1 day ago' : `${days} days ago`}`
+  }
+  const rotationRecency = ROTATION.map(ago).join(' · ')
+  const { data: rotationSources } = await supabase
+    .from('workouts')
+    .select('id, created_at, sets(exercise_name)')
+    .eq('user_id', user.id)
+    .eq('status', 'completed')
+    .contains('workout_types', [rotationNext])
+    .order('created_at', { ascending: false })
+    .limit(8)
+  const rotationSource = (rotationSources ?? []).find((w) => Array.isArray(w.sets) && w.sets.length > 0)
+  const rotationHint = rotationSource
+    ? `Draft from your last ${rotationNext}, ${new Date(rotationSource.created_at as string).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · ${new Set((rotationSource.sets as { exercise_name: string }[]).map((x) => x.exercise_name)).size} exercises`
+    : null
+
   const programWorkout = todayScheduled ?? nextScheduled
   const tw = programWorkout?.template_workouts as any
   const isToday = !!todayScheduled
@@ -56,6 +79,8 @@ export default async function StartPage() {
       <p className="mb-8 text-sm text-zinc-400">Choose how you want to train today.</p>
 
       <div className="flex flex-col gap-3">
+
+        <RotationCard next={rotationNext} skipTo={rotationSkipTo} hint={rotationHint} recency={rotationRecency} />
 
         {/* Program workout card */}
         {programWorkout && tw ? (
@@ -100,6 +125,18 @@ export default async function StartPage() {
           <div className="mt-4">
             <StartFreeWorkoutButton />
           </div>
+        </div>
+
+        {/* Training tools: programs and your lift history */}
+        <div className="grid grid-cols-2 gap-3">
+          <Link href="/programs" className="rounded-2xl border border-zinc-100 bg-white px-5 py-4 shadow-sm transition hover:border-zinc-200">
+            <p className="text-sm font-semibold text-zinc-800">Programs</p>
+            <p className="mt-0.5 text-xs text-zinc-400">Structured cycles</p>
+          </Link>
+          <Link href="/lifts" className="rounded-2xl border border-zinc-100 bg-white px-5 py-4 shadow-sm transition hover:border-zinc-200">
+            <p className="text-sm font-semibold text-zinc-800">Lifts</p>
+            <p className="mt-0.5 text-xs text-zinc-400">History by exercise</p>
+          </Link>
         </div>
 
       </div>

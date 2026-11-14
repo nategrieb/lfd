@@ -7,6 +7,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { nameToSlug } from '@/lib/lifts'
 import JorkButton from './JorkButton'
+import WorkoutTypePills from './WorkoutTypePills'
 import CommentsSection from './CommentsSection'
 import WorkoutVideoReelModal from './WorkoutVideoReelModal'
 
@@ -188,11 +189,24 @@ export default function FeedCard({ item, displayName, userInitial, username, ava
   const summaryHref = `/workout/${workout.id}/summary`
   const profileHref = username ? `/people/${username}` : null
 
-  const exerciseCount = new Set(sets.map((s) => s.exercise_name)).size
-  const strengthSets = sets.filter(s => !isCardioSet(s))
-  const cardioSets = sets.filter(s => isCardioSet(s))
-  const totalVolume = strengthSets.reduce((sum, s) => sum + s.weight * s.reps, 0)
-  const totalDistanceM = cardioSets.reduce((sum, s) => sum + (s.distance_m ?? 0), 0)
+  // The session in a glance: each exercise in the order it was done, with its sets and best set.
+  type ExerciseLine = { name: string; sets: number; best: string }
+  const exerciseLines: ExerciseLine[] = []
+  {
+    const groups = new Map<string, typeof orderedSets>()
+    for (const s of orderedSets) groups.set(s.exercise_name, [...(groups.get(s.exercise_name) ?? []), s])
+    for (const [name, group] of groups) {
+      if (group.some(isCardioSet)) {
+        const distance = group.reduce((sum, s) => sum + (s.distance_m ?? 0), 0)
+        const seconds = group.reduce((sum, s) => sum + (s.duration_seconds ?? 0), 0)
+        exerciseLines.push({ name, sets: group.length, best: [distance ? formatCardioDistance(distance) : null, seconds ? formatCardioDuration(seconds) : null].filter(Boolean).join(' · ') })
+        continue
+      }
+      const top = group.reduce((best, s) => (s.weight > best.weight || (s.weight === best.weight && s.reps > best.reps) ? s : best))
+      exerciseLines.push({ name, sets: group.length, best: `${top.weight} × ${top.reps}` })
+    }
+  }
+  const SHOWN_EXERCISES = 6
   const workoutTitle = workout.name?.trim() || null
   const primaryLift = topSetsByExercise[0] ?? null
 
@@ -229,6 +243,7 @@ export default function FeedCard({ item, displayName, userInitial, username, ava
             <p className="text-xs text-zinc-400">
               {dateStr}{workoutTitle ? <> · <span className="text-zinc-500">{workoutTitle}</span></> : null}
             </p>
+            <WorkoutTypePills types={workout.workout_types} className="mt-1" />
           </div>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0 text-zinc-300" aria-hidden="true">
             <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
@@ -255,59 +270,35 @@ export default function FeedCard({ item, displayName, userInitial, username, ava
         onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && router.push(summaryHref)}
         className="cursor-pointer px-4 py-3 hover:bg-zinc-50 transition-colors"
       >
-        {/* Surface primary lift only when there's no media to carry the context */}
-        {mediaItems.length === 0 && primaryLift && (
-          <div className="mb-2 flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <Link
-                href={`/lifts/${nameToSlug(primaryLift.set.exercise_name)}${workout.user_id !== currentUserId ? `?user=${workout.user_id}` : ''}`}
-                onClick={e => e.stopPropagation()}
-                className="block truncate text-sm font-bold uppercase tracking-wide text-zinc-900 hover:text-green-700 transition-colors"
-              >
-                {primaryLift.set.exercise_name}
-              </Link>
-              <p className="text-xs text-zinc-500">
-                {isCardioSet(primaryLift.set)
-                  ? [
-                      primaryLift.set.distance_m ? formatCardioDistance(primaryLift.set.distance_m) : null,
-                      primaryLift.set.duration_seconds ? formatCardioDuration(primaryLift.set.duration_seconds) : null,
-                    ].filter(Boolean).join(' · ')
-                  : `${primaryLift.set.weight} lbs × ${primaryLift.set.reps} reps`}
-              </p>
-            </div>
-            <div className="flex shrink-0 flex-wrap justify-end gap-1.5 pt-0.5">
-              {extraBadges.map(badge => (
-                <span
-                  key={badge}
-                  className="rounded-full px-2.5 py-0.5 text-xs font-bold text-white"
-                  style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
-                >
-                  {badge}
-                </span>
-              ))}
-              {primaryLift.set.rpe !== null && (
-                <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold text-zinc-600">
-                  RPE {primaryLift.set.rpe}
-                </span>
-              )}
-              {primaryLift.pctOneRepMax !== null && (
-                <span className="rounded-full border border-green-700 px-2.5 py-0.5 text-xs font-semibold text-green-700">
-                  {primaryLift.pctOneRepMax}% 1RM
-                </span>
-              )}
-            </div>
-          </div>
+        <ul className="space-y-1">
+          {exerciseLines.slice(0, SHOWN_EXERCISES).map((line) => (
+            <li key={line.name} className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="flex min-w-0 items-baseline gap-1.5">
+                <span className="truncate font-medium text-zinc-800">{line.name}</span>
+                {primaryLift && line.name === primaryLift.set.exercise_name && (
+                  <>
+                    {extraBadges.map(badge => (
+                      <span key={badge} className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold text-white" style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}>
+                        {badge}
+                      </span>
+                    ))}
+                    {primaryLift.pctOneRepMax !== null && (
+                      <span className="shrink-0 rounded-full border border-green-700 px-2 py-0.5 text-[10px] font-semibold text-green-700">{primaryLift.pctOneRepMax}% 1RM</span>
+                    )}
+                  </>
+                )}
+              </span>
+              <span className="shrink-0 text-xs tabular-nums text-zinc-500">
+                {line.sets} {line.sets === 1 ? 'set' : 'sets'}
+                <span className="text-zinc-300"> · </span>
+                <span className="font-semibold text-zinc-700">{line.best}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+        {exerciseLines.length > SHOWN_EXERCISES && (
+          <p className="mt-1 text-xs text-zinc-400">+{exerciseLines.length - SHOWN_EXERCISES} more exercise{exerciseLines.length - SHOWN_EXERCISES === 1 ? '' : 's'}</p>
         )}
-
-        <p className="text-xs text-zinc-400">
-          {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
-          {' · '}{sets.length} {sets.length === 1 ? 'set' : 'sets'}
-          {totalDistanceM > 0
-            ? <> · {formatCardioDistance(totalDistanceM)}</>  
-            : totalVolume > 0
-              ? <> · {totalVolume.toLocaleString()} lbs total</>
-              : null}
-        </p>
       </div>
 
       {/* ── Action bar ───────────────────────────────────────────────────── */}

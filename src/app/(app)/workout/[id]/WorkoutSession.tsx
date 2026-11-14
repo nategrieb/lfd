@@ -5,7 +5,7 @@ import { QUICK_PICKS, plainSlug } from '@/lib/exercise-catalogue'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { addSet, cancelWorkoutDraft, deleteExercise, deleteSet, finishWorkout, getLastSessionSets, updateSet, updateWorkoutDetails, updateWorkoutName } from '../actions'
+import { addSet, cancelWorkoutDraft, deleteExercise, deleteSet, finishWorkout, getLastSessionSets, updateWorkoutTypes, updateSet, updateWorkoutDetails, updateWorkoutName } from '../actions'
 import AddSetForm from './AddSetForm'
 import VideoUpload from './VideoUpload'
 import FinishWorkoutSheet from './FinishWorkoutSheet'
@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase'
 import { formatTempo, formatRest } from '@/lib/programs'
 import { isCardioSet, formatCardioDistance, formatCardioDuration } from '@/lib/feed'
 import RestTimer from './RestTimer'
+import { TYPE_PILL, WORKOUT_TYPES, cleanTypes, type WorkoutType } from '@/lib/workout-types'
 import WorkoutVideoReelModal from '@/components/WorkoutVideoReelModal'
 
 type ScheduledSet = {
@@ -51,6 +52,9 @@ type WorkoutSessionProps = {
   scheduledSets?: ScheduledSet[]
   initialLocation?: string | null
   initialPostPhotos?: string[] | null
+  initialTypes?: string[]
+  /** Set when this workout is a draft copied from an earlier one (the Push / Pull / Legs rotation). */
+  templateLabel?: string
 }
 
 type PendingSet = {
@@ -124,6 +128,8 @@ export default function WorkoutSession({
   scheduledSets,
   initialLocation,
   initialPostPhotos,
+  initialTypes,
+  templateLabel,
 }: WorkoutSessionProps) {
   // Build a map from canonical lowercase exercise name → all scheduled set groups (in order)
   const scheduledSetGroupsMap = useMemo(() => {
@@ -141,6 +147,7 @@ export default function WorkoutSession({
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [workoutName, setWorkoutName] = useState(initialWorkoutName)
+  const [types, setTypes] = useState<WorkoutType[]>(() => cleanTypes(initialTypes))
   const [draftWorkoutName, setDraftWorkoutName] = useState(initialWorkoutName)
   const [sets, setSets] = useState<WorkoutSet[]>(initialSets)
   const [setDrafts, setSetDrafts] = useState<Record<string, { weight: string; reps: string; rpe: string }>>(
@@ -185,7 +192,9 @@ export default function WorkoutSession({
       if (stored.length) {
         setExerciseOrder((prev) => {
           const kept = stored.filter((name) => typeof name === 'string')
-          return [...kept, ...prev.filter((name) => !kept.includes(name))]
+          // An exercise you removed from a draft or program stays removed; anything with logged sets always stays.
+          const logged = new Set(initialSets.map((set) => set.exercise_name))
+          return [...kept, ...prev.filter((name) => !kept.includes(name) && logged.has(name))]
         })
       }
     } catch {
@@ -365,6 +374,18 @@ export default function WorkoutSession({
     }))
   }
 
+  const toggleType = async (type: WorkoutType) => {
+    const next = types.includes(type) ? types.filter((t) => t !== type) : cleanTypes([...types, type])
+    const previous = types
+    setTypes(next) // shows at once; saved right away
+    const result = await updateWorkoutTypes({ workoutId, types: next })
+    if (!result.success) {
+      setTypes(previous)
+      setMessage(result.message ?? 'Could not save the type.')
+      setTimeout(() => setMessage(null), 3000)
+    }
+  }
+
   const handleAddExercise = () => {
     const trimmed = newExerciseName.trim()
     if (!trimmed) {
@@ -398,10 +419,11 @@ export default function WorkoutSession({
     const draft = pendingDrafts[localId]
     if (!draft) return
 
-    const weight = Number(draft.weight)
+    // A blank weight is a bodyweight set (0 lbs); only reps are required.
+    const weight = draft.weight.trim() === '' ? 0 : Number(draft.weight)
     const reps = Number(draft.reps)
-    if (!draft.weight || !draft.reps || Number.isNaN(weight) || weight <= 0 || Number.isNaN(reps) || reps <= 0) {
-      setMessage('Enter weight and reps before confirming.')
+    if (!draft.reps || Number.isNaN(weight) || weight < 0 || Number.isNaN(reps) || reps <= 0) {
+      setMessage('Enter the reps before confirming.')
       setTimeout(() => setMessage(null), 2500)
       return
     }
@@ -410,7 +432,7 @@ export default function WorkoutSession({
     const formData = new FormData()
     formData.set('workout_id', workoutId)
     formData.set('exercise_name', pending.exerciseName)
-    formData.set('weight', draft.weight)
+    formData.set('weight', String(weight))
     formData.set('reps', draft.reps)
     if (draft.rpe) formData.set('rpe', draft.rpe)
 
@@ -597,6 +619,26 @@ export default function WorkoutSession({
         />
       )}
       <div className="rounded-xl border border-zinc-100 bg-white p-4 shadow-sm">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-400">Type</label>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {WORKOUT_TYPES.map((type) => {
+            const on = types.includes(type)
+            return (
+              <button
+                key={type}
+                type="button"
+                aria-pressed={on}
+                onClick={() => toggleType(type)}
+                className={`rounded-full px-3.5 py-1.5 text-xs font-bold ring-1 ring-inset transition-colors ${on ? TYPE_PILL[type] : 'bg-white text-zinc-400 ring-zinc-200'}`}
+              >
+                {type}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-zinc-100 bg-white p-4 shadow-sm">
         <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-400">Workout Name</label>
         <div className="mt-2 flex items-center gap-2">
           <input
@@ -698,7 +740,14 @@ export default function WorkoutSession({
       )}
 
       <div className="mt-6 space-y-4">
-        <p className="text-xs text-zinc-400">Add sets inside each exercise card below.</p>
+        {templateLabel ? (
+          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3">
+            <p className="text-sm font-semibold text-green-800">{templateLabel}</p>
+            <p className="mt-0.5 text-xs text-green-700">Change the numbers and check each set off, remove what you don’t want, or cancel the draft and do your own.</p>
+          </div>
+        ) : (
+          <p className="text-xs text-zinc-400">Add sets inside each exercise card below.</p>
+        )}
 
         {exerciseOrder.length ? (
           exerciseOrder.map((exerciseName) => {
