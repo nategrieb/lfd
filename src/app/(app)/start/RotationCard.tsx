@@ -12,6 +12,15 @@ export default function RotationCard({ next, skipTo, hint, recency }: { next: Ro
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
+  // Same as last time (a draft copied from your last one of this type), or a blank slate with just the type set.
+  const start = (blank: boolean) =>
+    startTransition(async () => {
+      setError(null)
+      const result = await startRotationWorkout(next, blank)
+      if (result.id) router.push(`/workout/${result.id}`)
+      else setError(result.error ?? 'Could not start.')
+    })
+
   return (
     <div className="rounded-3xl border border-zinc-100 bg-white px-6 py-6 shadow-sm">
       <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Next up</p>
@@ -31,23 +40,28 @@ export default function RotationCard({ next, skipTo, hint, recency }: { next: Ro
       <p className="mt-1 text-xs text-zinc-400">{hint ?? `Nothing tagged ${next} yet, so this starts blank.`}</p>
       <p className="mt-0.5 text-xs text-zinc-300">{recency}</p>
 
-      <div className="mt-4 flex gap-2">
+      <div className={`mt-4 grid gap-2 ${hint ? 'grid-cols-2' : 'grid-cols-1'}`}>
         <button
           type="button"
           disabled={pending}
-          onClick={() =>
-            startTransition(async () => {
-              setError(null)
-              const result = await startRotationWorkout(next)
-              if (result.id) router.push(`/workout/${result.id}`)
-              else setError(result.error ?? 'Could not start.')
-            })
-          }
-          className="flex-1 rounded-xl py-3 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
+          onClick={() => start(false)}
+          className="rounded-xl py-3 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
           style={{ background: 'linear-gradient(135deg, #166534, #16a34a)' }}
         >
-          {pending ? 'Starting…' : `Start ${next}`}
+          {pending ? 'Starting…' : hint ? 'Same as last' : `Start ${next}`}
         </button>
+        {hint && (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => start(true)}
+          className="rounded-xl border border-green-700 py-3 text-sm font-bold text-green-800 transition hover:bg-green-50 disabled:opacity-60"
+        >
+          Blank slate
+        </button>
+        )}
+      </div>
+      <div className="mt-2 flex justify-end">
         <button
           type="button"
           disabled={pending}
@@ -59,7 +73,7 @@ export default function RotationCard({ next, skipTo, hint, recency }: { next: Ro
               else router.refresh()
             })
           }
-          className="rounded-xl border border-zinc-200 px-4 py-3 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-50 disabled:opacity-60"
+          className="rounded-lg px-2 py-1 text-xs font-semibold text-zinc-400 transition hover:text-zinc-700 disabled:opacity-60"
         >
           Skip to {skipTo}
         </button>

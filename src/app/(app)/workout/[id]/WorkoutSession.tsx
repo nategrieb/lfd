@@ -5,7 +5,7 @@ import { QUICK_PICKS, plainSlug } from '@/lib/exercise-catalogue'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { addSet, cancelWorkoutDraft, deleteExercise, deleteSet, finishWorkout, getLastSessionSets, updateWorkoutTypes, updateSet, updateWorkoutDetails, updateWorkoutName } from '../actions'
+import { addSet, cancelWorkoutDraft, deleteExercise, deleteSet, finishWorkout, getLastSessionSets, updateWorkoutTypes, clearWorkoutTemplate, updateSet, updateWorkoutDetails, updateWorkoutName } from '../actions'
 import AddSetForm from './AddSetForm'
 import VideoUpload from './VideoUpload'
 import FinishWorkoutSheet from './FinishWorkoutSheet'
@@ -228,6 +228,7 @@ export default function WorkoutSession({
   const [message, setMessage] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const savedName = useRef(initialWorkoutName)
+  const [draftCleared, setDraftCleared] = useState(false)
   const [removingExercise, setRemovingExercise] = useState<string | null>(null)
   const [showFinishSheet, setShowFinishSheet] = useState(false)
   const [lastAddedExercise, setLastAddedExercise] = useState<string | null>(null)
@@ -372,6 +373,21 @@ export default function WorkoutSession({
       ...prev,
       ...Object.fromEntries(added.map((p) => [p.localId, { weight: p.weight, reps: p.reps, rpe: p.rpe }])),
     }))
+  }
+
+  /** Throw away the copied draft but keep the workout (name and type): every exercise with nothing logged goes. */
+  const handleClearDraft = async () => {
+    const result = await clearWorkoutTemplate({ workoutId })
+    if (!result.success) {
+      setMessage(result.message ?? 'Could not clear the draft.')
+      setTimeout(() => setMessage(null), 3000)
+      return
+    }
+    const logged = new Set(sets.map((set) => set.exercise_name.toLowerCase()))
+    setExerciseOrder((prev) => prev.filter((name) => logged.has(name.toLowerCase())))
+    setPendingSets((prev) => prev.filter((p) => logged.has(p.exerciseName.toLowerCase())))
+    setDraftCleared(true)
+    router.refresh()
   }
 
   const toggleType = async (type: WorkoutType) => {
@@ -740,10 +756,17 @@ export default function WorkoutSession({
       )}
 
       <div className="mt-6 space-y-4">
-        {templateLabel ? (
+        {templateLabel && !draftCleared ? (
           <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3">
             <p className="text-sm font-semibold text-green-800">{templateLabel}</p>
-            <p className="mt-0.5 text-xs text-green-700">Change the numbers and check each set off, remove what you don’t want, or cancel the draft and do your own.</p>
+            <p className="mt-0.5 text-xs text-green-700">Change the numbers and check each set off, or start from nothing.</p>
+            <button
+              type="button"
+              onClick={handleClearDraft}
+              className="mt-2.5 rounded-lg border border-green-700 bg-white px-3 py-1.5 text-xs font-bold text-green-800 hover:bg-green-100"
+            >
+              Clear draft · start blank
+            </button>
           </div>
         ) : (
           <p className="text-xs text-zinc-400">Add sets inside each exercise card below.</p>
