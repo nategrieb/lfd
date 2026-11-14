@@ -41,14 +41,16 @@ export async function skipRotation(): Promise<{ next?: RotationType; error?: str
  * tagged with the type and remembers which workout it came from, and the workout screen turns that into
  * ready-to-check sets. Cancel the draft, or delete anything in it, to do your own.
  */
-export async function startRotationWorkout(type: string): Promise<{ id?: string; error?: string }> {
+export async function startRotationWorkout(type: string, blank = false): Promise<{ id?: string; error?: string }> {
   if (!isRotationType(type)) return { error: 'Unknown type.' }
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user?.id) return { error: 'Not authenticated.' }
 
   // The most recent finished workout of this type that has sets in it.
-  const { data: candidates } = await supabase
+  const { data: candidates } = blank
+    ? { data: [] as { id: string; sets: unknown[] }[] }
+    : await supabase
     .from('workouts')
     .select('id, sets(id)')
     .eq('user_id', user.id)

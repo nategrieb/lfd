@@ -256,6 +256,21 @@ export async function getLastSessionSets({ exerciseName, workoutId }: { exercise
   return { success: true as const, sets }
 }
 
+/** Drop a rotation draft's copied sets so the workout starts from a blank slate (it keeps its name and type). */
+export async function clearWorkoutTemplate({ workoutId }: { workoutId: string }) {
+  if (!workoutId) return { success: false, message: 'Missing workout.' }
+  const supabase = await createServerSupabase()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user?.id) return { success: false, message: 'Not authenticated.' }
+
+  const { error } = await supabase.from('workouts').update({ template_from: null }).eq('id', workoutId).eq('user_id', user.id)
+  if (error) return { success: false, message: error.message }
+  revalidatePath(`/workout/${workoutId}`)
+  return { success: true }
+}
+
 /** Tag a workout with its types (Push, Pull, Legs...). Unknown values are dropped. */
 export async function updateWorkoutTypes({ workoutId, types }: { workoutId: string; types: string[] }) {
   if (!workoutId) return { success: false, message: 'Missing workout.' }
