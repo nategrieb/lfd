@@ -102,6 +102,18 @@ export default async function StartPage() {
           </div>
         </div>
 
+        {/* Training tools: programs and your lift history */}
+        <div className="grid grid-cols-2 gap-3">
+          <Link href="/programs" className="rounded-2xl border border-zinc-100 bg-white px-5 py-4 shadow-sm transition hover:border-zinc-200">
+            <p className="text-sm font-semibold text-zinc-800">Programs</p>
+            <p className="mt-0.5 text-xs text-zinc-400">Structured cycles</p>
+          </Link>
+          <Link href="/lifts" className="rounded-2xl border border-zinc-100 bg-white px-5 py-4 shadow-sm transition hover:border-zinc-200">
+            <p className="text-sm font-semibold text-zinc-800">Lifts</p>
+            <p className="mt-0.5 text-xs text-zinc-400">History by exercise</p>
+          </Link>
+        </div>
+
       </div>
     </div>
   )

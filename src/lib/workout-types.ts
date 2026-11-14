@@ -18,3 +18,14 @@ export function cleanTypes(types: readonly string[] | null | undefined): Workout
   const have = new Set(types ?? [])
   return WORKOUT_TYPES.filter((t) => have.has(t))
 }
+
+/** Solid colours for the small marks on the training grid. */
+export const TYPE_DOT: Record<WorkoutType, string> = {
+  Push: 'bg-emerald-500',
+  Pull: 'bg-sky-500',
+  Legs: 'bg-amber-500',
+  Chest: 'bg-rose-500',
+  Back: 'bg-indigo-500',
+  Shoulders: 'bg-violet-500',
+  Arms: 'bg-teal-500',
+}
