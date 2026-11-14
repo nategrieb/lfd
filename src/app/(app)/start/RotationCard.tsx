@@ -3,15 +3,14 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { skipRotation, startRotationWorkout } from './actions'
-import { ROTATION, afterInRotation, type RotationType } from '@/lib/ppl'
+import { ROTATION, type RotationType } from '@/lib/ppl'
 import { TYPE_PILL } from '@/lib/workout-types'
 
 /** Push / Pull / Legs: what is next, a draft to start from your last one, and Skip to move on. */
-export default function RotationCard({ next, hint }: { next: RotationType; hint: string | null }) {
+export default function RotationCard({ next, skipTo, hint, recency }: { next: RotationType; skipTo: RotationType; hint: string | null; recency: string }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const following = afterInRotation(next)
 
   return (
     <div className="rounded-3xl border border-zinc-100 bg-white px-6 py-6 shadow-sm">
@@ -30,6 +29,7 @@ export default function RotationCard({ next, hint }: { next: RotationType; hint:
         </div>
       </div>
       <p className="mt-1 text-xs text-zinc-400">{hint ?? `Nothing tagged ${next} yet, so this starts blank.`}</p>
+      <p className="mt-0.5 text-xs text-zinc-300">{recency}</p>
 
       <div className="mt-4 flex gap-2">
         <button
@@ -61,7 +61,7 @@ export default function RotationCard({ next, hint }: { next: RotationType; hint:
           }
           className="rounded-xl border border-zinc-200 px-4 py-3 text-sm font-semibold text-zinc-600 transition hover:bg-zinc-50 disabled:opacity-60"
         >
-          Skip to {following}
+          Skip to {skipTo}
         </button>
       </div>
       {error && <p className="mt-2 text-xs text-rose-500">{error}</p>}

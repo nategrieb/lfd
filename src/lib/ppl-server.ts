@@ -1,27 +1,32 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { nextInRotation, rotationTypeOf, ROTATION } from '@/lib/ppl'
+import { ROTATION, isRotationType, pickNext, type LastByType } from '@/lib/ppl'
 
 // The app's client is bound to the lfd schema, so accept any schema.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Client = SupabaseClient<any, any, any>
 
-/** The rotation as it stands: the last finished Push / Pull / Legs workout and what is next. */
+/** The rotation as it stands: when each of Push / Pull / Legs was last done, what is next, and what Skip does. */
 export async function currentRotation(supabase: Client, userId: string) {
-  const [{ data: lastRow }, { data: profile }] = await Promise.all([
+  const [{ data: rows }, { data: profile }] = await Promise.all([
     supabase
       .from('workouts')
-      .select('id, created_at, workout_types')
+      .select('created_at, workout_types')
       .eq('user_id', userId)
       .eq('status', 'completed')
       .overlaps('workout_types', [...ROTATION])
       .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+      .limit(60),
     supabase.from('profiles').select('ppl_skip_to, ppl_skip_at').eq('id', userId).maybeSingle(),
   ])
-  const lastType = rotationTypeOf(lastRow?.workout_types as string[] | undefined)
-  const last = lastRow && lastType ? { type: lastType, at: lastRow.created_at as string } : null
-  const skip = profile ? { to: (profile as { ppl_skip_to: string | null }).ppl_skip_to, at: (profile as { ppl_skip_at: string | null }).ppl_skip_at } : null
-  return { last, next: nextInRotation(last, skip) }
-}
 
+  const last: LastByType = { Push: null, Pull: null, Legs: null }
+  let newestAt: string | null = null
+  for (const row of (rows ?? []) as { created_at: string; workout_types: string[] | null }[]) {
+    newestAt ??= row.created_at
+    for (const type of row.workout_types ?? []) {
+      if (isRotationType(type) && last[type] === null) last[type] = row.created_at
+    }
+  }
+  const skip = profile ? { to: (profile as { ppl_skip_to: string | null }).ppl_skip_to, at: (profile as { ppl_skip_at: string | null }).ppl_skip_at } : null
+  return { last, ...pickNext(last, newestAt, skip) }
+}

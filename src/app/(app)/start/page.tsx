@@ -5,6 +5,7 @@ import { createServerSupabase } from '@/lib/supabase-server'
 import StartFreeWorkoutButton from './StartFreeWorkoutButton'
 import RotationCard from './RotationCard'
 import { currentRotation } from '@/lib/ppl-server'
+import { ROTATION, daysAgo } from '@/lib/ppl'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,7 +50,12 @@ export default async function StartPage() {
     : { data: null }
 
   // Push / Pull / Legs: what comes after your last one, and what the draft would be copied from.
-  const { next: rotationNext } = await currentRotation(supabase, user.id)
+  const { next: rotationNext, skipTo: rotationSkipTo, last: rotationLast } = await currentRotation(supabase, user.id)
+  const ago = (type: (typeof ROTATION)[number]) => {
+    const days = daysAgo(rotationLast[type])
+    return `${type} ${days === null ? 'never' : days === 0 ? 'today' : days === 1 ? '1 day ago' : `${days} days ago`}`
+  }
+  const rotationRecency = ROTATION.map(ago).join(' · ')
   const { data: rotationSources } = await supabase
     .from('workouts')
     .select('id, created_at, sets(exercise_name)')
@@ -74,7 +80,7 @@ export default async function StartPage() {
 
       <div className="flex flex-col gap-3">
 
-        <RotationCard next={rotationNext} hint={rotationHint} />
+        <RotationCard next={rotationNext} skipTo={rotationSkipTo} hint={rotationHint} recency={rotationRecency} />
 
         {/* Program workout card */}
         {programWorkout && tw ? (

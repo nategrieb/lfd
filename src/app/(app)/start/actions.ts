@@ -1,7 +1,7 @@
 'use server'
 
 import { createServerSupabase } from '@/lib/supabase-server'
-import { afterInRotation, isRotationType, type RotationType } from '@/lib/ppl'
+import { isRotationType, type RotationType } from '@/lib/ppl'
 import { currentRotation } from '@/lib/ppl-server'
 
 export async function startFreeWorkout(): Promise<{ id?: string; error?: string }> {
@@ -30,8 +30,7 @@ export async function skipRotation(): Promise<{ next?: RotationType; error?: str
   const { data: { user } } = await supabase.auth.getUser()
   if (!user?.id) return { error: 'Not authenticated.' }
 
-  const { next } = await currentRotation(supabase, user.id)
-  const to = afterInRotation(next)
+  const { skipTo: to } = await currentRotation(supabase, user.id)
   const { error } = await supabase.from('profiles').update({ ppl_skip_to: to, ppl_skip_at: new Date().toISOString() }).eq('id', user.id)
   if (error) return { error: error.message.includes('ppl_skip') ? 'Run the rotation SQL in Supabase first.' : error.message }
   return { next: to }
