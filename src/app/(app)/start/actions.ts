@@ -1,8 +1,8 @@
 'use server'
 
 import { createServerSupabase } from '@/lib/supabase-server'
-import { isRotationType, type RotationType } from '@/lib/ppl'
-import { currentRotation } from '@/lib/ppl-server'
+import { WORKOUT_TYPES, cleanTypes } from '@/lib/workout-types'
+import { revalidatePath } from 'next/cache'
 
 export async function startFreeWorkout(): Promise<{ id?: string; error?: string }> {
   const supabase = await createServerSupabase()
@@ -24,33 +24,19 @@ export async function startFreeWorkout(): Promise<{ id?: string; error?: string 
   return { id: data.id }
 }
 
-/** "Skip": move the rotation on to the type after the current one. */
-export async function skipRotation(): Promise<{ next?: RotationType; error?: string }> {
-  const supabase = await createServerSupabase()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user?.id) return { error: 'Not authenticated.' }
-
-  const { skipTo: to } = await currentRotation(supabase, user.id)
-  const { error } = await supabase.from('profiles').update({ ppl_skip_to: to, ppl_skip_at: new Date().toISOString() }).eq('id', user.id)
-  if (error) return { error: error.message.includes('ppl_skip') ? 'Run the rotation SQL in Supabase first.' : error.message }
-  return { next: to }
-}
-
 /**
- * Start the next Push / Pull / Legs session. It is a draft copied from your last one of that type: the workout is
- * tagged with the type and remembers which workout it came from, and the workout screen turns that into
- * ready-to-check sets. Cancel the draft, or delete anything in it, to do your own.
+ * Start a Push / Pull / Legs session. It starts as a copy of your last one of that type: the workout is tagged
+ * with the type and remembers which workout it came from, and the workout screen turns that into ready-to-check
+ * sets. "Clear all" on the workout screen turns it into a blank one.
  */
-export async function startRotationWorkout(type: string, blank = false): Promise<{ id?: string; error?: string }> {
-  if (!isRotationType(type)) return { error: 'Unknown type.' }
+export async function startRotationWorkout(type: string): Promise<{ id?: string; error?: string }> {
+  if (!(WORKOUT_TYPES as readonly string[]).includes(type)) return { error: 'Unknown type.' }
   const supabase = await createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user?.id) return { error: 'Not authenticated.' }
 
   // The most recent finished workout of this type that has sets in it.
-  const { data: candidates } = blank
-    ? { data: [] as { id: string; sets: unknown[] }[] }
-    : await supabase
+  const { data: candidates } = await supabase
     .from('workouts')
     .select('id, sets(id)')
     .eq('user_id', user.id)
@@ -70,3 +56,15 @@ export async function startRotationWorkout(type: string, blank = false): Promise
   return { id: data.id }
 }
 
+
+/** Choose the workout types you rotate through (empty to turn the rotation off). */
+export async function saveRotation(types: string[]): Promise<{ error?: string }> {
+  const supabase = await createServerSupabase()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.id) return { error: 'Not authenticated.' }
+  const { error } = await supabase.from('profiles').update({ rotation: cleanTypes(types) }).eq('id', user.id)
+  if (error) return { error: error.message.includes('rotation') ? 'Run the rotation SQL in Supabase first.' : error.message }
+  revalidatePath('/start')
+  revalidatePath('/programs')
+  return {}
+}

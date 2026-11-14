@@ -3,6 +3,8 @@ import BackButton from '@/components/BackButton'
 import { getAuthUser } from '@/lib/auth-user'
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase-server'
+import { getRotation } from '@/lib/rotation-server'
+import RotationSetup from './RotationSetup'
 
 export default async function ProgramsPage() {
   const supabase = await createServerSupabase()
@@ -22,6 +24,7 @@ export default async function ProgramsPage() {
     .in('status', ['active'])
 
   const enrolledIds = new Set((enrollments ?? []).map((e) => e.template_id))
+  const { types: rotationTypes } = await getRotation(supabase, user.id)
 
   return (
     <div className="mx-auto max-w-lg px-5 py-8">
@@ -33,6 +36,9 @@ export default async function ProgramsPage() {
         </div>
       </header>
 
+      <RotationSetup initial={rotationTypes} />
+
+      <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">Programs</h2>
       {(programs ?? []).length === 0 ? (
         <div className="rounded-2xl border border-dashed border-zinc-200 px-6 py-12 text-center">
           <p className="text-sm font-medium text-zinc-400">No programs available yet.</p>

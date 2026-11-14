@@ -759,13 +759,13 @@ export default function WorkoutSession({
         {templateLabel && !draftCleared ? (
           <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3">
             <p className="text-sm font-semibold text-green-800">{templateLabel}</p>
-            <p className="mt-0.5 text-xs text-green-700">Change the numbers and check each set off, or start from nothing.</p>
+            <p className="mt-0.5 text-xs text-green-700">Change any numbers and check sets off as you go.</p>
             <button
               type="button"
               onClick={handleClearDraft}
               className="mt-2.5 rounded-lg border border-green-700 bg-white px-3 py-1.5 text-xs font-bold text-green-800 hover:bg-green-100"
             >
-              Clear draft · start blank
+              Clear all
             </button>
           </div>
         ) : (
@@ -1177,7 +1177,7 @@ export default function WorkoutSession({
                   disabled={isPending}
                   className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isPending ? 'Canceling…' : 'Cancel draft'}
+                  {isPending ? 'Canceling…' : 'Cancel workout'}
                 </button>
               ) : null}
             </div>
