@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import DeleteWorkoutButton from './DeleteWorkoutButton'
 import SummarySetsSection, { type SummarySet } from './SummarySetsSection'
-import { canonicalName } from '@/lib/lifts'
+import { canonicalName, epley1RM } from '@/lib/lifts'
 import { formatCardioDistance, formatCardioDuration } from '@/lib/feed'
 import ShareButton from './ShareButton'
 import SyncToStravaButton from './SyncToStravaButton'
@@ -33,7 +33,7 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
 
   const { data: sets } = await supabase
     .from('sets')
-    .select('id, exercise_name, weight, reps, rpe, video_url, created_at, distance_m, duration_seconds')
+    .select('id, exercise_id, exercise_name, weight, reps, rpe, video_url, created_at, distance_m, duration_seconds')
     .eq('workout_id', workoutId)
     .order('created_at', { ascending: true })
 
@@ -75,9 +75,49 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
   const allSets = (sets ?? []) as SummarySet[]
   const strengthSets = allSets.filter(s => !((s.distance_m ?? 0) > 0 || ((s.duration_seconds ?? 0) > 0 && s.weight === 0 && s.reps === 0)))
   const cardioSets = allSets.filter(s => (s.distance_m ?? 0) > 0 || ((s.duration_seconds ?? 0) > 0 && s.weight === 0 && s.reps === 0))
-  const totalVolume = strengthSets.reduce((acc: number, s) => acc + s.weight * s.reps, 0)
   const totalDistanceM = cardioSets.reduce((acc: number, s) => acc + (s.distance_m ?? 0), 0)
   const totalCardioSeconds = cardioSets.reduce((acc: number, s) => acc + (s.duration_seconds ?? 0), 0)
+  const exerciseCount = Object.keys(grouped).length
+
+  // How long it took: from starting the workout to the last set. Only trusted for workouts logged live (imported
+  // workouts have every set saved at once, which would give nonsense), so anything over six hours is ignored.
+  const lastSetAt = Math.max(0, ...allSets.map((s) => new Date(s.created_at).getTime()))
+  const minutes = Math.round((lastSetAt - new Date(workout.created_at).getTime()) / 60000)
+  const duration = minutes >= 5 && minutes <= 360 ? (minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes}m`) : null
+
+  // PRs this session: for each exercise, the best estimated 1RM here against everything the athlete did earlier.
+  // The earlier heaviest sets are enough to find the earlier best; an exercise with no earlier sets is not a PR.
+  type SetWithId = SummarySet & { exercise_id?: string | null }
+  const prs: { name: string; weight: number; reps: number; e1rm: number; previous: number }[] = []
+  {
+    const byExercise = new Map<string, { name: string; exerciseId: string | null; best: { weight: number; reps: number; e1rm: number } }>()
+    for (const set of strengthSets as SetWithId[]) {
+      const e1rm = epley1RM(set.weight, set.reps)
+      if (e1rm === null || set.weight <= 0) continue
+      const key = set.exercise_id ?? set.exercise_name
+      const current = byExercise.get(key)
+      if (!current || e1rm > current.best.e1rm) byExercise.set(key, { name: set.exercise_name, exerciseId: set.exercise_id ?? null, best: { weight: set.weight, reps: set.reps, e1rm } })
+    }
+    await Promise.all(
+      [...byExercise.values()].map(async ({ name, exerciseId, best }) => {
+        let query = supabase
+          .from('sets')
+          .select('weight, reps, workout:workouts!inner(created_at, status)')
+          .eq('user_id', workout.user_id)
+          .eq('workout.status', 'completed')
+          .lt('workout.created_at', workout.created_at)
+          .gt('weight', 0)
+          .order('weight', { ascending: false })
+          .limit(60)
+        query = exerciseId ? query.eq('exercise_id', exerciseId) : query.eq('exercise_name', name)
+        const { data: earlier } = await query
+        if (!earlier || earlier.length === 0) return
+        const previous = Math.max(0, ...earlier.map((e: { weight: number; reps: number }) => epley1RM(e.weight, e.reps) ?? 0))
+        if (best.e1rm > previous) prs.push({ name, weight: best.weight, reps: best.reps, e1rm: best.e1rm, previous })
+      }),
+    )
+    prs.sort((a, b) => b.e1rm - b.previous - (a.e1rm - a.previous))
+  }
 
   return (
     <div className="mx-auto max-w-lg px-5 py-8">
@@ -120,22 +160,42 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
         )}
       </div>
 
-      {(totalVolume > 0 || totalDistanceM > 0) && (
-        <div className="mb-6 rounded-2xl border border-zinc-100 bg-white p-4 text-center shadow-sm">
-          {totalVolume > 0 && (
-            <>
-              <p className="text-3xl font-bold text-zinc-900">{new Intl.NumberFormat('en-US').format(totalVolume)} lbs</p>
-              <p className="text-xs text-zinc-400">Total volume</p>
-            </>
-          )}
-          {totalDistanceM > 0 && (
-            <>
-              <p className={`text-3xl font-bold text-zinc-900${totalVolume > 0 ? ' mt-3' : ''}`}>
-                {formatCardioDistance(totalDistanceM)}{totalCardioSeconds > 0 ? ` · ${formatCardioDuration(totalCardioSeconds)}` : ''}
-              </p>
-              <p className="text-xs text-zinc-400">Total distance</p>
-            </>
-          )}
+      <div className="mb-6 flex items-center justify-around divide-x divide-zinc-100 rounded-2xl border border-zinc-100 bg-white py-3 text-center shadow-sm">
+        {duration && (
+          <div className="flex-1 px-2">
+            <p className="text-lg font-bold tabular-nums text-zinc-900">{duration}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Time</p>
+          </div>
+        )}
+        <div className="flex-1 px-2">
+          <p className="text-lg font-bold tabular-nums text-zinc-900">{exerciseCount}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">{exerciseCount === 1 ? 'Exercise' : 'Exercises'}</p>
+        </div>
+        <div className="flex-1 px-2">
+          <p className="text-lg font-bold tabular-nums text-zinc-900">{allSets.length}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">{allSets.length === 1 ? 'Set' : 'Sets'}</p>
+        </div>
+        {totalDistanceM > 0 && (
+          <div className="flex-1 px-2">
+            <p className="text-lg font-bold tabular-nums text-zinc-900">{formatCardioDistance(totalDistanceM)}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">{totalCardioSeconds > 0 ? formatCardioDuration(totalCardioSeconds) : 'Distance'}</p>
+          </div>
+        )}
+      </div>
+
+      {prs.length > 0 && (
+        <div className="mb-6 rounded-2xl border border-green-700/30 bg-green-50 p-4">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-green-700">{prs.length === 1 ? 'New PR' : `${prs.length} new PRs`}</p>
+          <ul className="space-y-1.5">
+            {prs.map((pr) => (
+              <li key={pr.name} className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="min-w-0 truncate font-semibold text-zinc-900">{pr.name}</span>
+                <span className="shrink-0 text-xs text-zinc-600">
+                  <span className="font-bold text-zinc-900">{pr.weight} × {pr.reps}</span> · est. 1RM {pr.e1rm} <span className="text-green-700">(+{pr.e1rm - pr.previous})</span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
