@@ -641,6 +641,7 @@ export default function WorkoutSession({
       }
 
       localStorage.removeItem(storageKey)
+      localStorage.removeItem(`lfd:removed-pending:${workoutId}`)
       router.push('/')
     })
   }
