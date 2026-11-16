@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase'
 import { formatTempo, formatRest } from '@/lib/programs'
 import { isCardioSet, formatCardioDistance, formatCardioDuration } from '@/lib/feed'
 import RestTimer from './RestTimer'
+import SwipeToDelete from '@/components/SwipeToDelete'
 import { TYPE_PILL, WORKOUT_TYPES, cleanTypes, type WorkoutType } from '@/lib/workout-types'
 import WorkoutVideoReelModal from '@/components/WorkoutVideoReelModal'
 
@@ -402,6 +403,33 @@ export default function WorkoutSession({
     }
   }
 
+  // Sets you haven't entered yet (a program's, or copied from your last workout) can be deleted one by one. The
+  // removals are remembered on this device so a reload doesn't bring them back.
+  const removedKey = `lfd:removed-pending:${workoutId}`
+  const removePending = (localId: string) => {
+    setPendingSets((prev) => prev.filter((p) => p.localId !== localId))
+    setPendingDrafts((prev) => {
+      const next = { ...prev }
+      delete next[localId]
+      return next
+    })
+    try {
+      const removed = new Set<string>(JSON.parse(localStorage.getItem(removedKey) ?? '[]'))
+      removed.add(localId)
+      localStorage.setItem(removedKey, JSON.stringify([...removed]))
+    } catch {
+      // ignore
+    }
+  }
+  useEffect(() => {
+    try {
+      const removed = new Set<string>(JSON.parse(localStorage.getItem(removedKey) ?? '[]'))
+      if (removed.size > 0) setPendingSets((prev) => prev.filter((p) => !removed.has(p.localId)))
+    } catch {
+      // ignore
+    }
+  }, [removedKey])
+
   const handleAddExercise = () => {
     const trimmed = newExerciseName.trim()
     if (!trimmed) {
@@ -759,7 +787,7 @@ export default function WorkoutSession({
         {templateLabel && !draftCleared ? (
           <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3">
             <p className="text-sm font-semibold text-green-800">{templateLabel}</p>
-            <p className="mt-0.5 text-xs text-green-700">Change any numbers and check sets off as you go.</p>
+            <p className="mt-0.5 text-xs text-green-700">Change any numbers and check sets off as you go. Swipe a set left to delete it.</p>
             <button
               type="button"
               onClick={handleClearDraft}
@@ -790,7 +818,7 @@ export default function WorkoutSession({
             <div id={exerciseDomId(exerciseName)} key={exerciseName} className="rounded-xl border border-zinc-100 bg-white p-4 shadow-sm">
               {(() => {
                 const groups = scheduledSetGroupsMap?.get(exerciseName.toLowerCase())
-                if (!groups?.length) return null
+                if (!groups?.length || templateLabel) return null
                 return (
                   <div className="mb-3 rounded-lg border border-green-700/20 bg-green-50 px-3 py-2.5">
                     <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-green-700">Target</p>
@@ -1003,7 +1031,9 @@ export default function WorkoutSession({
                       const isConfirming = confirmingLocalId === p.localId
                       const setNum = exerciseSets.length + index + 1
                       return (
-                        <li key={p.localId} className="rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+                        <li key={p.localId}>
+                         <SwipeToDelete onDelete={() => removePending(p.localId)} label={`Delete set ${setNum}`}>
+                          <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2">
                           <div className="grid grid-cols-[22px_minmax(0,1fr)_minmax(0,1fr)_64px_36px] items-center gap-2">
                             <span className="text-xs font-semibold text-green-700">{setNum}</span>
                             <input
@@ -1069,6 +1099,8 @@ export default function WorkoutSession({
                               )}
                             </button>
                           </div>
+                          </div>
+                         </SwipeToDelete>
                         </li>
                       )
                     })}
