@@ -230,6 +230,36 @@ export default function WorkoutSession({
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const savedName = useRef(initialWorkoutName)
   const [draftCleared, setDraftCleared] = useState(false)
+  // The "based on your last..." banner can be hidden without touching your sets; the swipe tip shows until you've
+  // used it once (or hidden the banner), on any device.
+  const bannerKey = `lfd:draft-banner-hidden:${workoutId}`
+  const [bannerHidden, setBannerHidden] = useState(false)
+  const [swipeHintSeen, setSwipeHintSeen] = useState(true)
+  useEffect(() => {
+    try {
+      setBannerHidden(localStorage.getItem(bannerKey) === '1')
+      setSwipeHintSeen(localStorage.getItem('lfd:swipe-hint-seen') === '1')
+    } catch {
+      // ignore
+    }
+  }, [bannerKey])
+  const markSwipeHintSeen = () => {
+    setSwipeHintSeen(true)
+    try {
+      localStorage.setItem('lfd:swipe-hint-seen', '1')
+    } catch {
+      // ignore
+    }
+  }
+  const hideBanner = () => {
+    setBannerHidden(true)
+    markSwipeHintSeen()
+    try {
+      localStorage.setItem(bannerKey, '1')
+    } catch {
+      // ignore
+    }
+  }
   const [removingExercise, setRemovingExercise] = useState<string | null>(null)
   const [showFinishSheet, setShowFinishSheet] = useState(false)
   const [lastAddedExercise, setLastAddedExercise] = useState<string | null>(null)
@@ -407,6 +437,7 @@ export default function WorkoutSession({
   // removals are remembered on this device so a reload doesn't bring them back.
   const removedKey = `lfd:removed-pending:${workoutId}`
   const removePending = (localId: string) => {
+    markSwipeHintSeen()
     setPendingSets((prev) => prev.filter((p) => p.localId !== localId))
     setPendingDrafts((prev) => {
       const next = { ...prev }
@@ -642,6 +673,7 @@ export default function WorkoutSession({
 
       localStorage.removeItem(storageKey)
       localStorage.removeItem(`lfd:removed-pending:${workoutId}`)
+      localStorage.removeItem(`lfd:draft-banner-hidden:${workoutId}`)
       router.push('/')
     })
   }
@@ -786,17 +818,22 @@ export default function WorkoutSession({
 
       <div className="mt-6 space-y-4">
         {templateLabel && !draftCleared ? (
-          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3">
-            <p className="text-sm font-semibold text-green-800">{templateLabel}</p>
-            <p className="mt-0.5 text-xs text-green-700">Change any numbers and check sets off as you go. Swipe a set left to delete it.</p>
-            <button
-              type="button"
-              onClick={handleClearDraft}
-              className="mt-2.5 rounded-lg border border-green-700 bg-white px-3 py-1.5 text-xs font-bold text-green-800 hover:bg-green-100"
-            >
-              Clear all
-            </button>
-          </div>
+          !bannerHidden && (
+            <div>
+              <div className="flex items-center gap-1 rounded-xl border border-green-200 bg-green-50 py-1.5 pl-3 pr-1">
+                <p className="min-w-0 flex-1 truncate text-xs font-semibold text-green-800">{templateLabel}</p>
+                <button type="button" onClick={handleClearDraft} className="shrink-0 rounded-md px-2 py-1 text-xs font-bold text-green-800 hover:bg-green-100">
+                  Clear all
+                </button>
+                <button type="button" onClick={hideBanner} aria-label="Hide this" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-green-700 hover:bg-green-100">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                    <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                  </svg>
+                </button>
+              </div>
+              {!swipeHintSeen && <p className="mt-1.5 px-1 text-[11px] text-zinc-400">Check sets off as you go. Swipe a set left to delete it.</p>}
+            </div>
+          )
         ) : (
           <p className="text-xs text-zinc-400">Add sets inside each exercise card below.</p>
         )}
