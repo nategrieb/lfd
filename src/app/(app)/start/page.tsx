@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase-server'
 import StartFreeWorkoutButton from './StartFreeWorkoutButton'
 import RotationCard from './RotationCard'
-import { getRotation } from '@/lib/rotation-server'
+import { getRotation, lastWorkoutOfType } from '@/lib/rotation-server'
 import { agoText } from '@/lib/rotation'
 
 export const dynamic = 'force-dynamic'
@@ -54,18 +54,8 @@ export default async function StartPage() {
   const rotationOptions: Record<string, { hint: string | null; ago: string }> = Object.fromEntries(
     await Promise.all(
       rotation.types.map(async (type) => {
-        const { data: sources } = await supabase
-          .from('workouts')
-          .select('id, created_at, sets(exercise_name)')
-          .eq('user_id', user.id)
-          .eq('status', 'completed')
-          .contains('workout_types', [type])
-          .order('created_at', { ascending: false })
-          .limit(8)
-        const source = (sources ?? []).find((w) => Array.isArray(w.sets) && w.sets.length > 0)
-        const hint = source
-          ? `Starts from your last ${type}, ${new Date(source.created_at as string).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} · ${new Set((source.sets as { exercise_name: string }[]).map((x) => x.exercise_name)).size} exercises`
-          : null
+        const source = await lastWorkoutOfType(supabase, user.id, type)
+        const hint = source ? `Starts from your last ${type}, ${source.date} · ${source.exercises} exercises` : null
         return [type, { hint, ago: agoText(rotation.last[type]) }] as const
       }),
     ),

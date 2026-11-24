@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { createServerSupabase } from '@/lib/supabase-server'
+import { buildStravaDescription, type StravaExercise } from '@/lib/strava-description'
+import { findWorkoutPrs } from '@/lib/workout-prs'
 
 // ── Token refresh ─────────────────────────────────────────────────────────
 
@@ -81,60 +83,54 @@ export async function syncWorkoutToStrava(
 
   if (!workout) return { error: 'Workout not found' }
 
-  // Fetch all sets in order — select only columns that always exist
+  // Fetch all sets in order — select only columns that always exist (exercise_id and created_at are used for PRs and time)
   const { data: sets } = await supabase
     .from('sets')
-    .select('exercise_name, weight, reps, rpe')
+    .select('exercise_id, exercise_name, weight, reps, rpe, created_at')
     .eq('workout_id', workoutId)
     .order('created_at', { ascending: true })
 
   const allSets = sets ?? []
-  const totalVolume = allSets.reduce((acc, s) => acc + s.weight * s.reps, 0)
 
   // Group sets by exercise, preserving first-appearance order
-  const exerciseOrder: string[] = []
-  const setsByExercise: Record<string, Array<{ weight: number; reps: number; rpe: number | null }>> = {}
+  const exercises: StravaExercise[] = []
+  const byName = new Map<string, StravaExercise>()
   for (const s of allSets) {
-    if (!setsByExercise[s.exercise_name]) {
-      exerciseOrder.push(s.exercise_name)
-      setsByExercise[s.exercise_name] = []
+    let entry = byName.get(s.exercise_name)
+    if (!entry) {
+      entry = { name: s.exercise_name, sets: [] }
+      byName.set(s.exercise_name, entry)
+      exercises.push(entry)
     }
-    setsByExercise[s.exercise_name].push({ weight: s.weight, reps: s.reps, rpe: s.rpe ?? null })
+    entry.sets.push({ weight: s.weight, reps: s.reps })
   }
 
-  const setsBlock = exerciseOrder.map((name) => {
-    const lines = setsByExercise[name].map((s) => {
-      const rpePart = s.rpe != null ? `  (RPE ${s.rpe})` : ''
-      return `  ${s.weight} lbs × ${s.reps}${rpePart}`
-    })
-    return `${name.toUpperCase()}\n${lines.join('\n')}`
-  }).join('\n\n')
+  // How long it took: from starting the workout to the last set (only trusted for live-logged workouts).
+  const lastSetAt = Math.max(0, ...allSets.map((s) => new Date(s.created_at).getTime()))
+  const rawMinutes = Math.round((lastSetAt - new Date(workout.created_at).getTime()) / 60000)
+  const minutes = rawMinutes >= 5 && rawMinutes <= 360 ? rawMinutes : null
+
+  const prs = await findWorkoutPrs(supabase, { user_id: user.id, created_at: workout.created_at }, allSets.filter((s) => s.weight > 0))
 
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? ''
-  const shareLink = `${base}/w/${workoutId}`
-  const locationPart = workout.location ? `  ·  ${workout.location}` : ''
   const workoutName = workout.name?.trim() || 'Weight Training'
   const targetStartMs = new Date(workout.created_at).getTime()
   const targetNameLower = workoutName.trim().toLowerCase()
 
-  const description = [
-    `🟩 LFD  ${workoutName}${locationPart}`,
-    '',
-    `OPEN IN LFD REELS: ${shareLink}`,
-    '',
-    setsBlock,
-    '',
-    `TOTAL VOLUME: ${new Intl.NumberFormat('en-US').format(totalVolume)} lbs`,
-    '',
-    `OPEN IN LFD REELS: ${shareLink}`,
-  ].join('\n')
+  const description = buildStravaDescription({
+    exercises,
+    minutes,
+    location: workout.location ?? null,
+    prs,
+    link: `${base}/w/${workoutId}`,
+  })
 
   const body = {
     name:             workoutName,
     type:             'WeightTraining',
     sport_type:       'WeightTraining',
     start_date_local: new Date(workout.created_at).toISOString().replace(/\.\d{3}Z$/, 'Z'),
-    elapsed_time:     3600,
+    elapsed_time:     (minutes ?? 60) * 60,
     description,
   }
 

@@ -3,6 +3,8 @@ import { getAuthUser } from '@/lib/auth-user'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import StartWorkoutButton from './workout/StartWorkoutButton'
+import StartRotationButton from '@/components/StartRotationButton'
+import { getRotation, lastWorkoutOfType } from '@/lib/rotation-server'
 import TodayWorkoutBanner from '@/components/TodayWorkoutBanner'
 import FeedCard from '@/components/FeedCard'
 import { buildFeed, type FeedWorkout } from '@/lib/feed'
@@ -22,6 +24,10 @@ export default async function DashboardPage() {
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
+
+  // Your rotation (if you have one): the next workout in it, so the feed's start button is one tap to that.
+  const rotation = await getRotation(supabase, user.id)
+  const rotationSource = rotation.next ? await lastWorkoutOfType(supabase, user.id, rotation.next) : null
 
   // Check for today's scheduled workout from an active program enrollment
   const todayISO = new Date().toISOString().slice(0, 10)
@@ -187,6 +193,8 @@ export default async function DashboardPage() {
             scheduledId={todayScheduled.id}
             workoutName={(todayScheduled.template_workouts as any)?.name ?? 'Program Workout'}
           />
+        ) : rotation.next ? (
+          <StartRotationButton type={rotation.next} hint={rotationSource ? `Same as your last ${rotation.next}, ${rotationSource.date}` : null} />
         ) : (
           <StartWorkoutButton />
         )}

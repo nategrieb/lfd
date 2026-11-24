@@ -29,3 +29,21 @@ export async function getRotation(supabase: Client, userId: string) {
   }
   return { types, last, next: rotationOrder(types, last)[0] }
 }
+
+/** Your most recent finished workout of a type that has sets in it: what "Start <type>" copies. */
+export async function lastWorkoutOfType(supabase: Client, userId: string, type: WorkoutType) {
+  const { data } = await supabase
+    .from('workouts')
+    .select('id, created_at, sets(exercise_name)')
+    .eq('user_id', userId)
+    .eq('status', 'completed')
+    .contains('workout_types', [type])
+    .order('created_at', { ascending: false })
+    .limit(8)
+  const source = (data ?? []).find((w: { sets: unknown }) => Array.isArray(w.sets) && w.sets.length > 0) as
+    | { id: string; created_at: string; sets: { exercise_name: string }[] }
+    | undefined
+  if (!source) return null
+  const date = new Date(source.created_at).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+  return { id: source.id, date, exercises: new Set(source.sets.map((s) => s.exercise_name)).size }
+}
