@@ -14,6 +14,9 @@ import { formatTempo, formatRest } from '@/lib/programs'
 import { isCardioSet, formatCardioDistance, formatCardioDuration } from '@/lib/feed'
 import RestTimer from './RestTimer'
 import SwipeToDelete from '@/components/SwipeToDelete'
+import SortableCard from '@/components/SortableCard'
+import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { TYPE_PILL, WORKOUT_TYPES, cleanTypes, type WorkoutType } from '@/lib/workout-types'
 import WorkoutVideoReelModal from '@/components/WorkoutVideoReelModal'
 
@@ -461,6 +464,20 @@ export default function WorkoutSession({
     }
   }, [removedKey])
 
+  // Drag an exercise by its handle to change the order. The order is remembered on this device, like the list itself.
+  const dragSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return
+    setExerciseOrder((prev) => {
+      const from = prev.indexOf(String(active.id))
+      const to = prev.indexOf(String(over.id))
+      return from < 0 || to < 0 ? prev : arrayMove(prev, from, to)
+    })
+  }
+
   const handleAddExercise = () => {
     const trimmed = newExerciseName.trim()
     if (!trimmed) {
@@ -839,7 +856,9 @@ export default function WorkoutSession({
         )}
 
         {exerciseOrder.length ? (
-          exerciseOrder.map((exerciseName) => {
+          <DndContext sensors={dragSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={exerciseOrder} strategy={verticalListSortingStrategy}>
+          {exerciseOrder.map((exerciseName) => {
             const exerciseSets = groupedSets[exerciseName] ?? []
             const latestSet = exerciseSets.length ? exerciseSets[exerciseSets.length - 1] : null
             // The next set starts from the last set as it is now (including edits you haven't saved yet), not as it was saved.
@@ -853,7 +872,9 @@ export default function WorkoutSession({
                 }
               : undefined
             return (
-            <div id={exerciseDomId(exerciseName)} key={exerciseName} className="rounded-xl border border-zinc-100 bg-white p-4 shadow-sm">
+            <SortableCard key={exerciseName} id={exerciseName}>
+             {(handle) => (
+            <div id={exerciseDomId(exerciseName)} className="rounded-xl border border-zinc-100 bg-white p-4 shadow-sm">
               {(() => {
                 const groups = scheduledSetGroupsMap?.get(exerciseName.toLowerCase())
                 if (!groups?.length || templateLabel) return null
@@ -902,6 +923,8 @@ export default function WorkoutSession({
                 )
               })()}
               <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                {handle}
                 <div>
                   <Link
                     href={`/lifts/${plainSlug(exerciseName)}`}
@@ -913,6 +936,7 @@ export default function WorkoutSession({
                   <p className="text-xs text-zinc-400">
                     {exerciseSets.length} set{exerciseSets.length === 1 ? '' : 's'}
                   </p>
+                </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {exerciseSets.length ? (
@@ -1163,8 +1187,12 @@ export default function WorkoutSession({
                 />
               </div>
             </div>
+             )}
+            </SortableCard>
             )
-          })
+          })}
+          </SortableContext>
+          </DndContext>
         ) : (
           <p className="text-sm text-zinc-400">No exercises yet. Add your first exercise below.</p>
         )}

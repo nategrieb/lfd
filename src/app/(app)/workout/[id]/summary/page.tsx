@@ -5,7 +5,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import DeleteWorkoutButton from './DeleteWorkoutButton'
 import SummarySetsSection, { type SummarySet } from './SummarySetsSection'
-import { canonicalName, epley1RM } from '@/lib/lifts'
+import { canonicalName } from '@/lib/lifts'
+import { findWorkoutPrs } from '@/lib/workout-prs'
 import { formatCardioDistance, formatCardioDuration } from '@/lib/feed'
 import ShareButton from './ShareButton'
 import SyncToStravaButton from './SyncToStravaButton'
@@ -85,39 +86,8 @@ export default async function WorkoutSummaryPage({ params }: { params: Promise<{
   const minutes = Math.round((lastSetAt - new Date(workout.created_at).getTime()) / 60000)
   const duration = minutes >= 5 && minutes <= 360 ? (minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes}m`) : null
 
-  // PRs this session: for each exercise, the best estimated 1RM here against everything the athlete did earlier.
-  // The earlier heaviest sets are enough to find the earlier best; an exercise with no earlier sets is not a PR.
-  type SetWithId = SummarySet & { exercise_id?: string | null }
-  const prs: { name: string; weight: number; reps: number; e1rm: number; previous: number }[] = []
-  {
-    const byExercise = new Map<string, { name: string; exerciseId: string | null; best: { weight: number; reps: number; e1rm: number } }>()
-    for (const set of strengthSets as SetWithId[]) {
-      const e1rm = epley1RM(set.weight, set.reps)
-      if (e1rm === null || set.weight <= 0) continue
-      const key = set.exercise_id ?? set.exercise_name
-      const current = byExercise.get(key)
-      if (!current || e1rm > current.best.e1rm) byExercise.set(key, { name: set.exercise_name, exerciseId: set.exercise_id ?? null, best: { weight: set.weight, reps: set.reps, e1rm } })
-    }
-    await Promise.all(
-      [...byExercise.values()].map(async ({ name, exerciseId, best }) => {
-        let query = supabase
-          .from('sets')
-          .select('weight, reps, workout:workouts!inner(created_at, status)')
-          .eq('user_id', workout.user_id)
-          .eq('workout.status', 'completed')
-          .lt('workout.created_at', workout.created_at)
-          .gt('weight', 0)
-          .order('weight', { ascending: false })
-          .limit(60)
-        query = exerciseId ? query.eq('exercise_id', exerciseId) : query.eq('exercise_name', name)
-        const { data: earlier } = await query
-        if (!earlier || earlier.length === 0) return
-        const previous = Math.max(0, ...earlier.map((e: { weight: number; reps: number }) => epley1RM(e.weight, e.reps) ?? 0))
-        if (best.e1rm > previous) prs.push({ name, weight: best.weight, reps: best.reps, e1rm: best.e1rm, previous })
-      }),
-    )
-    prs.sort((a, b) => b.e1rm - b.previous - (a.e1rm - a.previous))
-  }
+  // PRs this session, against everything the athlete did earlier.
+  const prs = await findWorkoutPrs(supabase, workout, strengthSets as (SummarySet & { exercise_id?: string | null })[])
 
   return (
     <div className="mx-auto max-w-lg px-5 py-8">
